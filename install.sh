@@ -1,6 +1,10 @@
 #!/bin/bash
 #
-# install.sh - Install vaultctl on macOS
+# install.sh - Install note-connector on macOS
+#
+# This is the Mac-side setup for the note-connector Clawdbot plugin.
+# Run this on your Mac after installing the plugin on your VPS via:
+#   clawdhub install note-connector
 #
 # Usage:
 #   ./install.sh [VAULT_ROOT]
@@ -8,7 +12,7 @@
 # This script:
 #   1. Copies vaultctl and vaultctl-wrapper to /usr/local/bin
 #   2. Creates a config file with VAULT_ROOT
-#   3. Prints instructions for SSH setup
+#   3. Prints instructions for SSH and tunnel setup
 #
 
 set -euo pipefail
@@ -17,7 +21,9 @@ INSTALL_DIR="/usr/local/bin"
 CONFIG_DIR="$HOME/.config/vaultctl"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-echo "=== vaultctl Installer ==="
+echo "=== Note Connector - Mac Setup ==="
+echo
+echo "This installs the Mac-side components for the note-connector plugin."
 echo
 
 # Get vault root
@@ -96,24 +102,32 @@ WRAPPER
 sudo chmod +x "$INSTALL_DIR/vaultctl-wrapper"
 
 echo
-echo "=== Installation Complete ==="
+echo "=== Step 1 Complete: vaultctl installed ==="
 echo
-echo "Test it:"
+echo "Test it locally:"
 echo "  export VAULT_ROOT=\"$VAULT_ROOT\""
 echo "  vaultctl tree"
 echo
-echo "=== SSH Setup (on this Mac) ==="
+echo "=== Step 2: SSH Setup ==="
 echo
-echo "To allow remote access, add this to ~/.ssh/authorized_keys:"
+echo "Add your VPS public key to ~/.ssh/authorized_keys with forced-command:"
 echo
 echo "  command=\"/usr/local/bin/vaultctl-wrapper\",no-port-forwarding,no-X11-forwarding,no-agent-forwarding <VPS_PUBLIC_KEY>"
 echo
-echo "Replace <VPS_PUBLIC_KEY> with the public key from your VPS."
+echo "To get your VPS public key, run this on the VPS:"
+echo "  cat ~/.ssh/id_ed25519.pub"
 echo
-echo "=== Reverse Tunnel (run on this Mac) ==="
+echo "=== Step 3: Start Tunnel ==="
 echo
+echo "Option A - Quick test (manual):"
 echo "  ssh -N -R 2222:localhost:22 user@your-vps.com"
 echo
-echo "Then from VPS, test with:"
+echo "Option B - Persistent (auto-reconnect):"
+echo "  ./setup/tunnel-setup.sh <vps_user> <vps_host>"
+echo
+echo "=== Step 4: Test from VPS ==="
+echo
 echo "  ssh -p 2222 localhost vaultctl tree"
+echo
+echo "If that works, your Clawdbot can now access your notes!"
 echo

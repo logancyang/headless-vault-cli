@@ -1,0 +1,34 @@
+{
+  "name": "note-connector",
+  "version": "0.1.0",
+  "description": "Securely read and edit local Markdown notes from your Clawdbot",
+  "author": "Logan Yang",
+  "repository": "https://github.com/anthropics/clawd-note-connector",
+  "license": "MIT",
+  "skills": [
+    {
+      "path": "skill",
+      "name": "note-connector"
+    }
+  ],
+  "binaries": {
+    "vault.sh": {
+      "path": "skill/vault.sh",
+      "description": "VPS-side wrapper that calls vaultctl on Mac via SSH"
+    }
+  },
+  "config": {
+    "VAULT_SSH_PORT": {
+      "description": "SSH tunnel port where Mac is reachable",
+      "default": "2222"
+    },
+    "VAULT_SSH_HOST": {
+      "description": "SSH host for tunnel",
+      "default": "localhost"
+    }
+  },
+  "setup": {
+    "vps": "Install this plugin via ClawdHub",
+    "mac": "Clone the repo on your Mac and run: ./install.sh ~/YourNotesFolder"
+  }
+}

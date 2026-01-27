@@ -14,6 +14,8 @@ Environment:
     VAULT_ROOT  Required. Path to the vault directory.
 """
 
+from __future__ import annotations
+
 import argparse
 import hashlib
 import json
@@ -22,6 +24,7 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Optional, Tuple
 
 
 # Exit codes
@@ -30,7 +33,7 @@ EXIT_USER_ERROR = 1
 EXIT_SYSTEM_ERROR = 2
 
 
-def get_vault_root():
+def get_vault_root() -> Tuple[Optional[Path], Optional[str]]:
     """Get and validate VAULT_ROOT from environment."""
     vault_root = os.environ.get("VAULT_ROOT")
     if not vault_root:
@@ -45,7 +48,7 @@ def get_vault_root():
     return vault_path, None
 
 
-def resolve_and_validate(candidate: str, vault_root: Path, must_exist: bool = True) -> tuple[Path | None, str | None]:
+def resolve_and_validate(candidate: str, vault_root: Path, must_exist: bool = True) -> Tuple[Optional[Path], Optional[str]]:
     """
     Resolve a path and validate it's inside the vault.
 
