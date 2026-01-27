@@ -1,0 +1,52 @@
+#!/bin/bash
+#
+# vaultctl-wrapper - SSH forced-command wrapper for vaultctl
+#
+# This script is used as the forced command in ~/.ssh/authorized_keys
+# to restrict SSH access to only vaultctl commands.
+#
+# Usage in authorized_keys:
+#   command="/path/to/vaultctl-wrapper",no-port-forwarding,no-X11-forwarding,no-agent-forwarding ssh-ed25519 AAAA...
+#
+# The wrapper:
+#   1. Reads SSH_ORIGINAL_COMMAND (the command the client tried to run)
+#   2. Validates it starts with "vaultctl"
+#   3. Executes the command if valid, rejects otherwise
+#
+
+set -euo pipefail
+
+# Configuration
+VAULTCTL_PATH="${VAULTCTL_PATH:-/usr/local/bin/vaultctl}"
+LOG_FILE="${VAULTCTL_LOG:-/tmp/vaultctl.log}"
+
+log() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG_FILE"
+}
+
+reject() {
+    local reason="$1"
+    log "REJECTED: $reason (command: ${SSH_ORIGINAL_COMMAND:-<none>})"
+    echo '{"error": "command rejected", "reason": "'"$reason"'"}' >&2
+    exit 1
+}
+
+# SSH_ORIGINAL_COMMAND contains the command the client tried to run
+if [[ -z "${SSH_ORIGINAL_COMMAND:-}" ]]; then
+    reject "no command provided"
+fi
+
+# Extract the first word (command name)
+read -r cmd_name _ <<< "$SSH_ORIGINAL_COMMAND"
+
+# Only allow vaultctl commands
+if [[ "$cmd_name" != "vaultctl" ]]; then
+    reject "only vaultctl commands allowed"
+fi
+
+log "ALLOWED: $SSH_ORIGINAL_COMMAND"
+
+# Replace "vaultctl" with the actual path and execute
+# Remove "vaultctl" prefix and prepend the actual path
+args="${SSH_ORIGINAL_COMMAND#vaultctl}"
+exec "$VAULTCTL_PATH" $args

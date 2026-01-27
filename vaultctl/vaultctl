@@ -1,0 +1,355 @@
+#!/usr/bin/env python3
+"""
+vaultctl - Vault control CLI for remote markdown vault operations.
+
+Usage:
+    vaultctl tree [--depth N] [--all]
+    vaultctl resolve (--path PATH | --title TITLE)
+    vaultctl info PATH
+    vaultctl read PATH
+    vaultctl create PATH CONTENT
+    vaultctl append PATH CONTENT
+
+Environment:
+    VAULT_ROOT  Required. Path to the vault directory.
+"""
+
+import argparse
+import hashlib
+import json
+import os
+import subprocess
+import sys
+from datetime import datetime
+from pathlib import Path
+
+
+# Exit codes
+EXIT_SUCCESS = 0
+EXIT_USER_ERROR = 1
+EXIT_SYSTEM_ERROR = 2
+
+
+def get_vault_root():
+    """Get and validate VAULT_ROOT from environment."""
+    vault_root = os.environ.get("VAULT_ROOT")
+    if not vault_root:
+        return None, "VAULT_ROOT environment variable not set"
+
+    vault_path = Path(vault_root).resolve()
+    if not vault_path.exists():
+        return None, f"VAULT_ROOT does not exist: {vault_root}"
+    if not vault_path.is_dir():
+        return None, f"VAULT_ROOT is not a directory: {vault_root}"
+
+    return vault_path, None
+
+
+def resolve_and_validate(candidate: str, vault_root: Path, must_exist: bool = True) -> tuple[Path | None, str | None]:
+    """
+    Resolve a path and validate it's inside the vault.
+
+    Args:
+        candidate: The path to resolve (relative to vault or absolute)
+        vault_root: The vault root path
+        must_exist: If True, error if file doesn't exist
+
+    Returns:
+        (resolved_path, error_message)
+    """
+    # If relative, prepend vault root
+    if not os.path.isabs(candidate):
+        candidate = vault_root / candidate
+
+    # Resolve to absolute path (handles .., symlinks, etc.)
+    resolved = Path(candidate).resolve()
+
+    # Check if inside vault
+    try:
+        resolved.relative_to(vault_root)
+    except ValueError:
+        return None, f"Path outside vault: {resolved}"
+
+    # Check existence if required
+    if must_exist and not resolved.exists():
+        return None, f"File not found: {resolved}"
+
+    return resolved, None
+
+
+def output_success(data: dict):
+    """Print success JSON to stdout and exit."""
+    print(json.dumps(data))
+    sys.exit(EXIT_SUCCESS)
+
+
+def output_error(message: str, code: int = EXIT_USER_ERROR, **extra):
+    """Print error JSON to stderr and exit."""
+    error = {"error": message, **extra}
+    print(json.dumps(error), file=sys.stderr)
+    sys.exit(code)
+
+
+# =============================================================================
+# Commands
+# =============================================================================
+
+def cmd_tree(args):
+    """List vault directory structure."""
+    vault_root, err = get_vault_root()
+    if err:
+        output_error(err)
+
+    max_depth = args.depth if args.depth else float('inf')
+    include_all = args.all
+
+    tree = []
+
+    def walk(path: Path, depth: int):
+        if depth > max_depth:
+            return
+
+        try:
+            entries = sorted(path.iterdir(), key=lambda p: (p.is_file(), p.name.lower()))
+        except PermissionError:
+            return
+
+        for entry in entries:
+            # Skip hidden files/dirs
+            if entry.name.startswith('.'):
+                continue
+
+            rel_path = str(entry.relative_to(vault_root))
+
+            if entry.is_dir():
+                tree.append({"path": rel_path, "type": "dir"})
+                walk(entry, depth + 1)
+            elif entry.is_file():
+                if include_all or entry.suffix.lower() == '.md':
+                    tree.append({"path": rel_path, "type": "file"})
+
+    walk(vault_root, 1)
+    output_success({"tree": tree})
+
+
+def cmd_resolve(args):
+    """Resolve a note by path or title."""
+    vault_root, err = get_vault_root()
+    if err:
+        output_error(err)
+
+    if args.path:
+        # Path mode: direct resolution
+        resolved, err = resolve_and_validate(args.path, vault_root, must_exist=True)
+        if err:
+            output_error(err)
+        output_success({"resolved_path": str(resolved)})
+
+    elif args.title:
+        # Title mode: search by filename
+        title = args.title
+
+        # Try exact match first (with .md extension)
+        if not title.endswith('.md'):
+            title_with_ext = title + '.md'
+        else:
+            title_with_ext = title
+
+        # Search for matching files
+        matches = []
+        for md_file in vault_root.rglob('*.md'):
+            if md_file.name.lower() == title_with_ext.lower():
+                matches.append(md_file)
+
+        if len(matches) == 0:
+            output_error("Not found", candidates=[])
+        elif len(matches) == 1:
+            output_success({"resolved_path": str(matches[0])})
+        else:
+            # Multiple matches - return shortest path or list
+            candidates = [str(m.relative_to(vault_root)) for m in matches]
+            output_error("Multiple matches", candidates=candidates)
+
+
+def cmd_info(args):
+    """Get file metadata."""
+    vault_root, err = get_vault_root()
+    if err:
+        output_error(err)
+
+    resolved, err = resolve_and_validate(args.path, vault_root)
+    if err:
+        output_error(err)
+
+    try:
+        stat_info = resolved.stat()
+        content = resolved.read_bytes()
+
+        # Count lines
+        lines = content.count(b'\n')
+        if content and not content.endswith(b'\n'):
+            lines += 1
+
+        # SHA256
+        sha256 = hashlib.sha256(content).hexdigest()
+
+        output_success({
+            "path": str(resolved),
+            "lines": lines,
+            "bytes": stat_info.st_size,
+            "sha256": sha256,
+            "mtime": int(stat_info.st_mtime)
+        })
+    except IOError as e:
+        output_error(f"Failed to read file: {e}", EXIT_SYSTEM_ERROR)
+
+
+def cmd_read(args):
+    """Read entire note content."""
+    vault_root, err = get_vault_root()
+    if err:
+        output_error(err)
+
+    resolved, err = resolve_and_validate(args.path, vault_root)
+    if err:
+        output_error(err)
+
+    try:
+        content = resolved.read_text(encoding='utf-8')
+        output_success({
+            "path": str(resolved),
+            "content": content
+        })
+    except IOError as e:
+        output_error(f"Failed to read file: {e}", EXIT_SYSTEM_ERROR)
+    except UnicodeDecodeError as e:
+        output_error(f"File is not valid UTF-8: {e}", EXIT_USER_ERROR)
+
+
+def cmd_create(args):
+    """Create a new note."""
+    vault_root, err = get_vault_root()
+    if err:
+        output_error(err)
+
+    # Validate path but don't require existence
+    resolved, err = resolve_and_validate(args.path, vault_root, must_exist=False)
+    if err:
+        output_error(err)
+
+    # Check file doesn't already exist
+    if resolved.exists():
+        output_error(f"File already exists: {resolved}")
+
+    # Ensure it's a .md file
+    if resolved.suffix.lower() != '.md':
+        output_error("File must have .md extension")
+
+    try:
+        # Create parent directories if needed
+        resolved.parent.mkdir(parents=True, exist_ok=True)
+
+        # Write content
+        resolved.write_text(args.content, encoding='utf-8')
+
+        # Compute hash
+        sha256 = hashlib.sha256(args.content.encode('utf-8')).hexdigest()
+
+        output_success({
+            "status": "ok",
+            "path": str(resolved),
+            "sha256": sha256
+        })
+    except IOError as e:
+        output_error(f"Failed to create file: {e}", EXIT_SYSTEM_ERROR)
+
+
+def cmd_append(args):
+    """Append content to an existing note."""
+    vault_root, err = get_vault_root()
+    if err:
+        output_error(err)
+
+    resolved, err = resolve_and_validate(args.path, vault_root)
+    if err:
+        output_error(err)
+
+    try:
+        # Create backup
+        timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
+        backup_path = resolved.with_suffix(f'.md.bak.{timestamp}')
+
+        # Read current content for backup
+        original_content = resolved.read_bytes()
+        backup_path.write_bytes(original_content)
+
+        # Append new content
+        with open(resolved, 'a', encoding='utf-8') as f:
+            f.write(args.content)
+
+        # Compute new hash
+        new_content = resolved.read_bytes()
+        sha256 = hashlib.sha256(new_content).hexdigest()
+
+        output_success({
+            "status": "ok",
+            "path": str(resolved),
+            "sha256": sha256,
+            "backup": str(backup_path)
+        })
+    except IOError as e:
+        output_error(f"Failed to append to file: {e}", EXIT_SYSTEM_ERROR)
+
+
+# =============================================================================
+# Main
+# =============================================================================
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Vault control CLI for remote markdown vault operations.',
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    subparsers = parser.add_subparsers(dest='command', required=True)
+
+    # tree
+    p_tree = subparsers.add_parser('tree', help='List vault directory structure')
+    p_tree.add_argument('--depth', type=int, help='Maximum depth to traverse')
+    p_tree.add_argument('--all', action='store_true', help='Include all files, not just .md')
+    p_tree.set_defaults(func=cmd_tree)
+
+    # resolve
+    p_resolve = subparsers.add_parser('resolve', help='Resolve note by path or title')
+    resolve_group = p_resolve.add_mutually_exclusive_group(required=True)
+    resolve_group.add_argument('--path', help='Resolve by path (relative to vault)')
+    resolve_group.add_argument('--title', help='Resolve by title (filename match)')
+    p_resolve.set_defaults(func=cmd_resolve)
+
+    # info
+    p_info = subparsers.add_parser('info', help='Get file metadata')
+    p_info.add_argument('path', help='Path to the note')
+    p_info.set_defaults(func=cmd_info)
+
+    # read
+    p_read = subparsers.add_parser('read', help='Read entire note content')
+    p_read.add_argument('path', help='Path to the note')
+    p_read.set_defaults(func=cmd_read)
+
+    # create
+    p_create = subparsers.add_parser('create', help='Create a new note')
+    p_create.add_argument('path', help='Path for the new note')
+    p_create.add_argument('content', help='Content of the note')
+    p_create.set_defaults(func=cmd_create)
+
+    # append
+    p_append = subparsers.add_parser('append', help='Append to an existing note')
+    p_append.add_argument('path', help='Path to the note')
+    p_append.add_argument('content', help='Content to append')
+    p_append.set_defaults(func=cmd_append)
+
+    args = parser.parse_args()
+    args.func(args)
+
+
+if __name__ == '__main__':
+    main()
