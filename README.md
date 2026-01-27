@@ -24,37 +24,18 @@ A "vault" in this project is simply a folder of markdown files. It doesn't requi
 
 Setup requires two parts: **VPS** (where Clawdbot runs) and **Mac** (where your notes live).
 
-### 1. Install plugin on VPS
+---
+
+### On VPS
+
+#### 1. Install the plugin
 
 ```bash
 clawdhub install vault-controller
 ```
 
-### 2. Install on Mac
+#### 2. Get your SSH public key
 
-```bash
-git clone https://github.com/anthropics/vault-controller.git
-cd vault-controller
-./install.sh ~/Notes
-```
-
-### 3. Test locally (on Mac)
-
-```bash
-vaultctl tree
-vaultctl read "Projects/Plan.md"
-```
-
-### 4. Set up SSH access
-
-This step lets your VPS connect to your Mac, but *only* to run vaultctl commands.
-
-**First, enable Remote Login on your Mac:**
-1. Open **System Settings** → **General** → **Sharing**
-2. Turn on **Remote Login**
-3. Under "Allow access for", select your user or "All users"
-
-**On your VPS**, get the public key:
 ```bash
 cat ~/.ssh/id_ed25519.pub
 ```
@@ -71,12 +52,41 @@ You'll see something like:
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... user@vps
 ```
 
-**On your Mac**, open (or create) the authorized_keys file:
+Copy this key — you'll need it for the Mac setup.
+
+---
+
+### On Mac
+
+#### 3. Enable Remote Login
+
+1. Open **System Settings** → **General** → **Sharing**
+2. Turn on **Remote Login**
+3. Under "Allow access for", select your user or "All users"
+
+#### 4. Install vaultctl
+
+```bash
+git clone https://github.com/anthropics/vault-controller.git
+cd vault-controller
+./install.sh ~/Notes
+```
+
+#### 5. Test locally
+
+```bash
+vaultctl tree
+vaultctl read "Projects/Plan.md"
+```
+
+#### 6. Add the VPS key to authorized_keys
+
+Open (or create) the authorized_keys file:
 ```bash
 vim ~/.ssh/authorized_keys
 ```
 
-Add this line (all on one line), replacing `<PASTE_VPS_KEY_HERE>` with the key you copied:
+Add this line (all on one line), replacing `<PASTE_VPS_KEY_HERE>` with the key you copied from step 2:
 ```
 command="/usr/local/bin/vaultctl-wrapper",no-port-forwarding,no-X11-forwarding,no-agent-forwarding <PASTE_VPS_KEY_HERE>
 ```
@@ -96,7 +106,7 @@ chmod 600 ~/.ssh/authorized_keys
 
 **What this does:** The `command=` prefix restricts this key so it can *only* run vaultctl — even if someone has the key, they can't get a shell or run other commands.
 
-### 5. Start reverse tunnel (on Mac)
+#### 7. Start the reverse tunnel
 
 **Option A: Manual (for testing)**
 ```bash
@@ -121,7 +131,11 @@ This installs a launchd service that:
 - Auto-reconnects if connection drops
 - Logs to `/tmp/vaultctl-tunnel.log`
 
-### 6. Test from VPS
+---
+
+### On VPS
+
+#### 8. Test the connection
 
 ```bash
 ssh -p 2222 <mac-username>@localhost vaultctl tree

@@ -1,7 +1,7 @@
 ---
 name: vault-controller
 description: Read and edit Markdown notes on a remote Mac via SSH tunnel.
-homepage: https://github.com/anthropics/vault-controller
+homepage: https://github.com/logancyang/vault-controller
 metadata: {"clawdbot":{"emoji":"🗄️"}}
 ---
 
