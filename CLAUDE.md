@@ -43,6 +43,7 @@ vaultctl info <path>                           # Get file metadata
 vaultctl read <path>                           # Read entire note
 vaultctl create <path> <content>               # Create new note
 vaultctl append <path> <content>               # Append to note (with backup)
+vaultctl set-root <path>                       # Change vault root directory
 ```
 
 ### Future commands (v1+)
@@ -66,12 +67,14 @@ install.sh             # Installation script
 ## Quick Start
 
 ```bash
-# Install
+# Install (sets VAULT_ROOT automatically)
 ./install.sh ~/Notes
 
 # Test locally
-export VAULT_ROOT=~/Notes
 vaultctl tree
+
+# Change vault root later
+vaultctl set-root ~/NewNotes
 
 # SSH setup (add to ~/.ssh/authorized_keys on Mac)
 command="/usr/local/bin/vaultctl-wrapper",no-port-forwarding,no-X11-forwarding,no-agent-forwarding <VPS_KEY>

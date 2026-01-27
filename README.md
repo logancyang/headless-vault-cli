@@ -1,22 +1,24 @@
-# clawd-note-connector
+# vault-controller
 
-Let your AI assistant read and edit your local notes — securely.
+Let your remote AI assistant (like Clawdbot) read and write to your local Markdown vault — securely.
 
 ## What is this?
 
-If you run an AI bot on a server (like Clawdbot), it can't normally access files on your laptop. This tool creates a secure bridge so your bot can read and write Markdown notes in a specific folder on your Mac.
+If you run an AI bot on a server (like Clawdbot), it can't normally access notes on your laptop. This tool creates a secure bridge so your bot can read and write Markdown notes in a specific folder on your Mac.
 
 **How it works:** Your Mac connects to your server and keeps a secure channel open. The bot can only run a specific set of commands (`vaultctl`) — it cannot access other files or run arbitrary programs.
 
 ## Note to Obsidian Users
-When running clawdbot on a remote server, tools like the bundled obsidian-cli doesn't fully work because many of its operations require the Obsidian GUI app installed on that remote machine. This note-connector is the way around. It allows the remote clawdbot operate on your local folder, no Obsidian app or vault required, simply a folder and markdown files!
+When running clawdbot on a remote server, tools like the bundled obsidian-cli doesn't fully work because many of its operations require the Obsidian GUI app installed on that remote machine. This vault-controller is the way around. It allows the remote clawdbot operate on your local folder, no Obsidian app or vault required, simply a folder and markdown files!
+
+## Note to Other Note Takers
+A "vault" in this project is simply a folder of markdown files. It doesn't require it to be an Obsidian vault, or be managed by any specific note-taking app. Feel free to use vault-controller on any folder of notes you have.
 
 ## Features
 
 - **Safe by design**: Bot can only access your notes folder, nothing else
-- **No network hassles**: Works even if your Mac is on WiFi, behind a router, or on a VPN
 - **Automatic backups**: Creates a backup before any edit
-- **Simple commands**: `tree`, `read`, `create`, `append`
+- **Simple and safe commands**: `tree`, `read`, `create`, `append`, no destructive operations like delete or overwrite to avoid data loss
 
 ## Quick Start
 
@@ -25,21 +27,20 @@ Setup requires two parts: **VPS** (where Clawdbot runs) and **Mac** (where your 
 ### 1. Install plugin on VPS
 
 ```bash
-clawdhub install note-connector
+clawdhub install vault-controller
 ```
 
 ### 2. Install on Mac
 
 ```bash
-git clone https://github.com/anthropics/clawd-note-connector.git
-cd clawd-note-connector
+git clone https://github.com/anthropics/vault-controller.git
+cd vault-controller
 ./install.sh ~/Notes
 ```
 
 ### 3. Test locally (on Mac)
 
 ```bash
-export VAULT_ROOT=~/Notes
 vaultctl tree
 vaultctl read "Projects/Plan.md"
 ```
@@ -47,6 +48,11 @@ vaultctl read "Projects/Plan.md"
 ### 4. Set up SSH access
 
 This step lets your VPS connect to your Mac, but *only* to run vaultctl commands.
+
+**First, enable Remote Login on your Mac:**
+1. Open **System Settings** → **General** → **Sharing**
+2. Turn on **Remote Login**
+3. Under "Allow access for", select your user or "All users"
 
 **On your VPS**, get the public key:
 ```bash
@@ -94,8 +100,14 @@ chmod 600 ~/.ssh/authorized_keys
 
 **Option A: Manual (for testing)**
 ```bash
-ssh -N -R 2222:localhost:22 user@your-vps.com
+ssh -N -R 2222:localhost:22 \
+    -o ServerAliveInterval=30 \
+    -o ServerAliveCountMax=3 \
+    -o ExitOnForwardFailure=yes \
+    user@your-vps.com
 ```
+
+The keepalive options detect and kill dead connections within 90 seconds, preventing zombie tunnels.
 
 **Option B: Persistent (auto-reconnect via launchd)**
 ```bash
@@ -134,6 +146,7 @@ If that works, your Clawdbot can now access your notes!
 | `read` | Read entire note | `vaultctl read Projects/Plan.md` |
 | `create` | Create new note | `vaultctl create Notes/New.md "# Title"` |
 | `append` | Append to note | `vaultctl append Notes/Log.md "Entry"` |
+| `set-root` | Change vault directory | `vaultctl set-root ~/NewNotes` |
 
 All commands output JSON to stdout. Errors go to stderr with exit code 1 (user error) or 2 (system error).
 
@@ -176,24 +189,25 @@ $ vaultctl read Projects/Plan.md
 
 ### Changing your vault folder
 
-The vault path is stored in `~/.config/vaultctl/config` on your Mac.
+The vault path is configured automatically during installation and stored in `~/.config/vaultctl/config`.
 
-**Option 1: Re-run the installer**
+**Option 1: Use the set-root command (recommended)**
+```bash
+vaultctl set-root ~/NewNotesFolder
+```
+
+**Option 2: Re-run the installer**
 ```bash
 ./install.sh ~/NewNotesFolder
 ```
 
-**Option 2: Edit the config directly**
-```bash
-vim ~/.config/vaultctl/config
-# Change VAULT_ROOT to your new path
-```
-
 ### Environment variables
+
+These are automatically configured during setup. You don't need to set them manually.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `VAULT_ROOT` | Path to vault directory | Required |
+| `VAULT_ROOT` | Path to vault directory | Set during install |
 | `VAULTCTL_PATH` | Path to vaultctl binary | `/usr/local/bin/vaultctl` |
 | `VAULTCTL_LOG` | Log file for wrapper | `/tmp/vaultctl.log` |
 

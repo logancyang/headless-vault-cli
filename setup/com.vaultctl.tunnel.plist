@@ -11,7 +11,7 @@
         <string>-N</string>
         <string>-T</string>
         <string>-o</string>
-        <string>ServerAliveInterval=60</string>
+        <string>ServerAliveInterval=30</string>
         <string>-o</string>
         <string>ServerAliveCountMax=3</string>
         <string>-o</string>

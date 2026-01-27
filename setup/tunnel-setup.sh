@@ -46,6 +46,13 @@ fi
 echo "SSH connection OK"
 echo
 
+# Configure Mac username on VPS for vault-controller skill
+MAC_USER="$(whoami)"
+echo "Configuring Mac username ($MAC_USER) on VPS..."
+ssh "$VPS_USER@$VPS_HOST" "mkdir -p ~/.config/vault-controller && echo '$MAC_USER' > ~/.config/vault-controller/mac-user"
+echo "Mac username configured"
+echo
+
 # Create LaunchAgents directory if needed
 mkdir -p "$HOME/Library/LaunchAgents"
 

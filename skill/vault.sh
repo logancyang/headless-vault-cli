@@ -9,24 +9,36 @@
 #   ./vault.sh <command> [args...]
 #
 # Environment:
+#   VAULT_SSH_USER  - Mac username (required)
 #   VAULT_SSH_PORT  - SSH port for tunnel (default: 2222)
 #   VAULT_SSH_HOST  - SSH host (default: localhost)
 #
 
 set -euo pipefail
 
+# Auto-detect Mac username from config file if not set via env
+VAULT_SSH_USER="${VAULT_SSH_USER:-}"
+if [[ -z "$VAULT_SSH_USER" && -f "$HOME/.config/vault-controller/mac-user" ]]; then
+    VAULT_SSH_USER="$(cat "$HOME/.config/vault-controller/mac-user")"
+fi
+
 VAULT_SSH_PORT="${VAULT_SSH_PORT:-2222}"
 VAULT_SSH_HOST="${VAULT_SSH_HOST:-localhost}"
 SSH_OPTS="-o ConnectTimeout=10 -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
 
+if [[ -z "$VAULT_SSH_USER" ]]; then
+    echo '{"error": "config_missing", "message": "Mac username not configured. Run tunnel-setup.sh or set VAULT_SSH_USER"}' >&2
+    exit 1
+fi
+
 # Run vaultctl command on remote Mac
 run_vaultctl() {
-    ssh $SSH_OPTS -p "$VAULT_SSH_PORT" "$VAULT_SSH_HOST" vaultctl "$@"
+    ssh $SSH_OPTS -p "$VAULT_SSH_PORT" "${VAULT_SSH_USER}@${VAULT_SSH_HOST}" vaultctl "$@"
 }
 
 # Check if tunnel is up
 check_tunnel() {
-    if ! ssh $SSH_OPTS -p "$VAULT_SSH_PORT" "$VAULT_SSH_HOST" vaultctl tree --depth 0 >/dev/null 2>&1; then
+    if ! ssh $SSH_OPTS -p "$VAULT_SSH_PORT" "${VAULT_SSH_USER}@${VAULT_SSH_HOST}" vaultctl tree --depth 0 >/dev/null 2>&1; then
         echo '{"error": "tunnel_down", "message": "Cannot reach Mac. Is the tunnel running?"}' >&2
         exit 1
     fi
@@ -104,7 +116,8 @@ case "$cmd" in
             echo '{"error": "missing_param", "message": "path= and content= are required"}' >&2
             exit 1
         fi
-        run_vaultctl create "$path" "$content"
+        # Pipe content via stdin to avoid shell quoting issues over SSH
+        printf '%s' "$content" | ssh $SSH_OPTS -p "$VAULT_SSH_PORT" "${VAULT_SSH_USER}@${VAULT_SSH_HOST}" vaultctl create "$path" -
         ;;
 
     append)
@@ -121,7 +134,8 @@ case "$cmd" in
             echo '{"error": "missing_param", "message": "path= and content= are required"}' >&2
             exit 1
         fi
-        run_vaultctl append "$path" "$content"
+        # Pipe content via stdin to avoid shell quoting issues over SSH
+        printf '%s' "$content" | ssh $SSH_OPTS -p "$VAULT_SSH_PORT" "${VAULT_SSH_USER}@${VAULT_SSH_HOST}" vaultctl append "$path" -
         ;;
 
     check)

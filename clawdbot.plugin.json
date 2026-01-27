@@ -1,14 +1,14 @@
 {
-  "name": "note-connector",
+  "name": "vault-controller",
   "version": "0.1.0",
   "description": "Securely read and edit local Markdown notes from your Clawdbot",
   "author": "Logan Yang",
-  "repository": "https://github.com/anthropics/clawd-note-connector",
+  "repository": "https://github.com/logancyang/vault-controller",
   "license": "MIT",
   "skills": [
     {
       "path": "skill",
-      "name": "note-connector"
+      "name": "vault-controller"
     }
   ],
   "binaries": {
@@ -18,6 +18,10 @@
     }
   },
   "config": {
+    "VAULT_SSH_USER": {
+      "description": "Mac username (auto-detected by tunnel-setup.sh, or run 'whoami' on your Mac)",
+      "required": false
+    },
     "VAULT_SSH_PORT": {
       "description": "SSH tunnel port where Mac is reachable",
       "default": "2222"

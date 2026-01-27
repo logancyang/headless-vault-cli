@@ -1,10 +1,10 @@
 #!/bin/bash
 #
-# install.sh - Install note-connector on macOS
+# install.sh - Install vault-controller on macOS
 #
-# This is the Mac-side setup for the note-connector Clawdbot plugin.
+# This is the Mac-side setup for the vault-controller Clawdbot plugin.
 # Run this on your Mac after installing the plugin on your VPS via:
-#   clawdhub install note-connector
+#   clawdhub install vault-controller
 #
 # Usage:
 #   ./install.sh [VAULT_ROOT]
@@ -23,7 +23,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "=== Note Connector - Mac Setup ==="
 echo
-echo "This installs the Mac-side components for the note-connector plugin."
+echo "This installs the Mac-side components for the vault-controller plugin."
 echo
 
 # Get vault root

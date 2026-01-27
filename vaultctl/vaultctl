@@ -17,10 +17,10 @@ Environment:
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import os
-import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -235,8 +235,17 @@ def cmd_create(args):
     if err:
         output_error(err)
 
+    # Decode path if base64 flag is set
+    if args.base64:
+        try:
+            path = base64.b64decode(args.path).decode('utf-8')
+        except Exception as e:
+            output_error(f"Invalid base64 path: {e}")
+    else:
+        path = args.path
+
     # Validate path but don't require existence
-    resolved, err = resolve_and_validate(args.path, vault_root, must_exist=False)
+    resolved, err = resolve_and_validate(path, vault_root, must_exist=False)
     if err:
         output_error(err)
 
@@ -248,15 +257,26 @@ def cmd_create(args):
     if resolved.suffix.lower() != '.md':
         output_error("File must have .md extension")
 
+    # Get content from stdin, base64, or argument
+    if args.content == '-':
+        content = sys.stdin.read()
+    elif args.base64:
+        try:
+            content = base64.b64decode(args.content).decode('utf-8')
+        except Exception as e:
+            output_error(f"Invalid base64 content: {e}")
+    else:
+        content = args.content
+
     try:
         # Create parent directories if needed
         resolved.parent.mkdir(parents=True, exist_ok=True)
 
         # Write content
-        resolved.write_text(args.content, encoding='utf-8')
+        resolved.write_text(content, encoding='utf-8')
 
         # Compute hash
-        sha256 = hashlib.sha256(args.content.encode('utf-8')).hexdigest()
+        sha256 = hashlib.sha256(content.encode('utf-8')).hexdigest()
 
         output_success({
             "status": "ok",
@@ -267,15 +287,64 @@ def cmd_create(args):
         output_error(f"Failed to create file: {e}", EXIT_SYSTEM_ERROR)
 
 
+def cmd_set_root(args):
+    """Set the vault root directory."""
+    vault_path = Path(args.path).resolve()
+
+    if not vault_path.exists():
+        output_error(f"Path does not exist: {vault_path}")
+    if not vault_path.is_dir():
+        output_error(f"Path is not a directory: {vault_path}")
+
+    # Create config directory
+    config_dir = Path.home() / ".config" / "vaultctl"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    config_file = config_dir / "config"
+
+    # Write config
+    config_content = f'''# vaultctl configuration
+export VAULT_ROOT="{vault_path}"
+export VAULTCTL_PATH="/usr/local/bin/vaultctl"
+export VAULTCTL_LOG="/tmp/vaultctl.log"
+'''
+    config_file.write_text(config_content)
+
+    output_success({
+        "status": "ok",
+        "vault_root": str(vault_path),
+        "config_file": str(config_file)
+    })
+
+
 def cmd_append(args):
     """Append content to an existing note."""
     vault_root, err = get_vault_root()
     if err:
         output_error(err)
 
-    resolved, err = resolve_and_validate(args.path, vault_root)
+    # Decode path if base64 flag is set
+    if args.base64:
+        try:
+            path = base64.b64decode(args.path).decode('utf-8')
+        except Exception as e:
+            output_error(f"Invalid base64 path: {e}")
+    else:
+        path = args.path
+
+    resolved, err = resolve_and_validate(path, vault_root)
     if err:
         output_error(err)
+
+    # Get content from stdin, base64, or argument
+    if args.content == '-':
+        content = sys.stdin.read()
+    elif args.base64:
+        try:
+            content = base64.b64decode(args.content).decode('utf-8')
+        except Exception as e:
+            output_error(f"Invalid base64 content: {e}")
+    else:
+        content = args.content
 
     try:
         # Create backup
@@ -288,7 +357,7 @@ def cmd_append(args):
 
         # Append new content
         with open(resolved, 'a', encoding='utf-8') as f:
-            f.write(args.content)
+            f.write(content)
 
         # Compute new hash
         new_content = resolved.read_bytes()
@@ -341,14 +410,21 @@ def main():
     # create
     p_create = subparsers.add_parser('create', help='Create a new note')
     p_create.add_argument('path', help='Path for the new note')
-    p_create.add_argument('content', help='Content of the note')
+    p_create.add_argument('content', help='Content of the note (or base64 if --base64)')
+    p_create.add_argument('--base64', '-b', action='store_true', help='Content is base64 encoded')
     p_create.set_defaults(func=cmd_create)
 
     # append
     p_append = subparsers.add_parser('append', help='Append to an existing note')
     p_append.add_argument('path', help='Path to the note')
-    p_append.add_argument('content', help='Content to append')
+    p_append.add_argument('content', help='Content to append (or base64 if --base64)')
+    p_append.add_argument('--base64', '-b', action='store_true', help='Content is base64 encoded')
     p_append.set_defaults(func=cmd_append)
+
+    # set-root
+    p_set_root = subparsers.add_parser('set-root', help='Set the vault root directory')
+    p_set_root.add_argument('path', help='Path to the vault directory')
+    p_set_root.set_defaults(func=cmd_set_root)
 
     args = parser.parse_args()
     args.func(args)

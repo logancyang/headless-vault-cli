@@ -16,7 +16,13 @@
 
 set -euo pipefail
 
-# Configuration
+# Source config file if it exists (sets VAULT_ROOT, VAULTCTL_PATH, etc.)
+CONFIG_FILE="$HOME/.config/vaultctl/config"
+if [[ -f "$CONFIG_FILE" ]]; then
+    source "$CONFIG_FILE"
+fi
+
+# Configuration (with defaults if not set by config)
 VAULTCTL_PATH="${VAULTCTL_PATH:-/usr/local/bin/vaultctl}"
 LOG_FILE="${VAULTCTL_LOG:-/tmp/vaultctl.log}"
 
@@ -46,7 +52,6 @@ fi
 
 log "ALLOWED: $SSH_ORIGINAL_COMMAND"
 
-# Replace "vaultctl" with the actual path and execute
-# Remove "vaultctl" prefix and prepend the actual path
-args="${SSH_ORIGINAL_COMMAND#vaultctl}"
-exec "$VAULTCTL_PATH" $args
+# Execute the command with proper argument parsing
+# Using eval to preserve quotes in the original command
+eval "exec $VAULTCTL_PATH ${SSH_ORIGINAL_COMMAND#vaultctl}"

@@ -1,119 +1,118 @@
-# Note Connector
+---
+name: vault-controller
+description: Read and edit Markdown notes on a remote Mac via SSH tunnel.
+homepage: https://github.com/anthropics/vault-controller
+metadata: {"clawdbot":{"emoji":"🗄️"}}
+---
 
-Read and edit your local Markdown notes from Clawdbot.
+# Vault Controller
 
-## Setup
+Access Markdown notes on a local Mac from this remote Clawdbot via SSH tunnel.
 
-This skill requires setup on **both** your VPS and your Mac:
+## Available Commands
 
-1. **VPS**: Install via `clawdhub install note-connector`
-2. **Mac**: Clone the repo and run `./install.sh ~/YourNotesFolder`
+You have access to these commands ONLY. Do not attempt commands not listed here (no rename, delete, move, or edit commands exist).
 
-See the [full setup guide](https://github.com/anthropics/clawd-note-connector#quick-start).
+| Command | Description |
+|---------|-------------|
+| `tree` | List vault directory structure |
+| `resolve` | Find note by path or title |
+| `info` | Get file metadata (lines, bytes, sha256, mtime) |
+| `read` | Read note content |
+| `create` | Create a NEW note (fails if file exists) |
+| `append` | Append content to EXISTING note (creates backup) |
+| `set-root` | Set vault root directory |
 
-## Configuration
+## How to Run Commands
 
-Set these environment variables on the VPS (or in your Clawdbot config):
+All commands are executed via SSH:
+```bash
+ssh -4 -p ${VAULT_SSH_PORT:-2222} ${VAULT_SSH_USER}@${VAULT_SSH_HOST:-localhost} vaultctl <command> [args]
+```
+
+Always use `-4` to force IPv4 (avoids IPv6 timeout issues).
+
+## Command Reference
+
+### tree - List vault structure
+```bash
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl tree
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl tree --depth 2
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl tree --all
+```
+Options:
+- `--depth N` - Maximum depth to traverse
+- `--all` - Include all files, not just .md
+
+### resolve - Find note by path or title
+```bash
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl resolve --title "Meeting Notes"
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl resolve --path "Projects/Plan.md"
+```
+
+### info - Get file metadata
+```bash
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl info "Projects/Plan.md"
+```
+Returns JSON: `{"path": "...", "lines": N, "bytes": N, "sha256": "...", "mtime": N}`
+
+### read - Read note content
+```bash
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl read "Projects/Plan.md"
+```
+Returns JSON: `{"path": "...", "content": "..."}`
+
+### create - Create a NEW note
+**IMPORTANT**: Use `--base64` flag with BOTH path AND content base64 encoded. This is required for paths/content with spaces or special characters.
 
 ```bash
-export VAULT_SSH_PORT=2222
-export VAULT_SSH_HOST=localhost
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl create <base64_path> <base64_content> --base64
 ```
 
-## Tools
-
-### vault_tree
-
-List the vault directory structure.
-
-**Parameters:**
-- `depth` (optional): Maximum depth to traverse
-- `all` (optional): Include all files, not just .md
-
-**Example:**
-```
-vault_tree depth=2
+Example to create "Notes/Morning Brief.md" with content "# Hello\n\nWorld":
+```bash
+# Encode path: echo -n "Notes/Morning Brief.md" | base64 → Tm90ZXMvTW9ybmluZyBCcmllZi5tZA==
+# Encode content: echo -n "# Hello\n\nWorld" | base64 → IyBIZWxsbwoKV29ybGQ=
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl create Tm90ZXMvTW9ybmluZyBCcmllZi5tZA== IyBIZWxsbwoKV29ybGQ= --base64
 ```
 
----
+- Creates parent directories automatically
+- Fails if file already exists (use `append` to add to existing files)
+- File must have `.md` extension
 
-### vault_resolve
-
-Find a note by path or title.
-
-**Parameters:**
-- `path` (optional): Relative path to the note
-- `title` (optional): Note title to search for
-
-**Example:**
-```
-vault_resolve title="Meeting Notes"
-vault_resolve path="Projects/Plan.md"
+### append - Append to EXISTING note
+```bash
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl append <base64_path> <base64_content> --base64
 ```
 
----
+- Creates a timestamped backup before modifying
+- Fails if file does not exist (use `create` for new files)
 
-### vault_info
-
-Get metadata about a note.
-
-**Parameters:**
-- `path` (required): Path to the note
-
-**Returns:** lines, bytes, sha256 hash, modification time
-
-**Example:**
-```
-vault_info path="Projects/Plan.md"
+### set-root - Set vault root directory
+```bash
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl set-root /path/to/vault
 ```
 
----
+## What You CANNOT Do
 
-### vault_read
+These operations are NOT supported:
+- **Rename** files or folders
+- **Delete** files or folders
+- **Move** files between folders
+- **Edit** specific parts of a file (only append to end)
+- **Create** folders without a file (folders are created automatically with `create`)
 
-Read the contents of a note.
+## Environment Variables
 
-**Parameters:**
-- `path` (required): Path to the note
+Auto-configured by tunnel-setup.sh:
+- `VAULT_SSH_USER` - Mac username (auto-detected)
+- `VAULT_SSH_PORT` - Tunnel port (default: 2222)
+- `VAULT_SSH_HOST` - Tunnel host (default: localhost)
 
-**Example:**
-```
-vault_read path="Projects/Plan.md"
-```
+## Tips
 
----
-
-### vault_create
-
-Create a new note.
-
-**Parameters:**
-- `path` (required): Path for the new note (must end in .md)
-- `content` (required): Content of the note
-
-**Example:**
-```
-vault_create path="Notes/NewIdea.md" content="# New Idea\n\nThis is my new idea."
-```
-
----
-
-### vault_append
-
-Append content to an existing note.
-
-**Parameters:**
-- `path` (required): Path to the note
-- `content` (required): Content to append
-
-**Example:**
-```
-vault_append path="Notes/Log.md" content="\n\n## 2024-01-26\n\nNew entry here."
-```
-
-## Usage Tips
-
-1. Use `vault_tree` first to see what's in the vault
-2. Use `vault_resolve` to find notes by title if you don't know the exact path
-3. Use `vault_info` to check file size before reading large files
-4. When appending, include leading newlines to separate from existing content
+- Always run `vaultctl tree` first to see what notes exist
+- Use `vaultctl resolve --title "..."` to find a note by name
+- All output is JSON
+- The Mac must be online with tunnel running
+- **For create/append**: ALWAYS base64 encode BOTH path AND content with `--base64` flag
