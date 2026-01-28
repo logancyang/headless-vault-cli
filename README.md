@@ -80,16 +80,22 @@ sudo systemctl enable --now sshd
 #### 4. Install vaultctl
 
 ```bash
-git clone https://github.com/anthropics/headless-vault-cli.git
+curl -fsSL https://raw.githubusercontent.com/logancyang/headless-vault-cli/master/setup.sh | bash -s -- <path-to-vault>
+```
+
+Replace `<path-to-vault>` with your notes folder, e.g. `~/Notes` or `~/Documents/MyVault`.
+
+Or manually:
+```bash
+git clone https://github.com/logancyang/headless-vault-cli.git
 cd headless-vault-cli
-./install.sh ~/Notes
+./install.sh <path-to-vault>
 ```
 
 #### 5. Test locally
 
 ```bash
 vaultctl tree
-vaultctl read "Projects/Plan.md"
 ```
 
 #### 6. Add the VPS key to authorized_keys
@@ -250,6 +256,26 @@ These are automatically configured during setup. You don't need to set them manu
 | `VAULTCTL_LOG` | Log file for wrapper | `/tmp/vaultctl.log` |
 
 Config file location: `~/.config/vaultctl/config`
+
+## Updating
+
+When a new version is released, update both parts:
+
+### On VPS
+
+```bash
+clawdhub update headless-vault-cli
+```
+
+Then start a new Moltbot session (skills are snapshotted at session start).
+
+### On Local Machine (Mac or Linux)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/logancyang/headless-vault-cli/master/setup.sh | bash -s -- <path-to-vault>
+```
+
+Replace `<path-to-vault>` with your notes folder. Same command for install and update.
 
 ## Requirements
 

@@ -1,18 +1,19 @@
 #!/bin/bash
 #
-# install.sh - Install headless-vault-cli on macOS or Linux
+# install.sh - Local installer for headless-vault-cli
 #
-# This is the local machine setup for the headless-vault-cli Moltbot skill.
-# Run this on your Mac/Linux after installing the skill on your VPS via:
-#   clawdhub install headless-vault-cli
+# USE THIS IF: You cloned the repo manually and want to install from source
 #
-# Usage:
-#   ./install.sh [VAULT_ROOT]
+# For most users, use setup.sh instead (one-line install/update):
+#   curl -fsSL https://raw.githubusercontent.com/logancyang/headless-vault-cli/master/setup.sh | bash -s -- <path-to-vault>
 #
 # This script:
 #   1. Copies vaultctl and vaultctl-wrapper to /usr/local/bin
-#   2. Creates a config file with VAULT_ROOT
+#   2. Creates config file at ~/.config/vaultctl/config
 #   3. Prints instructions for SSH and tunnel setup
+#
+# Usage:
+#   ./install.sh <path-to-vault>
 #
 
 set -euo pipefail
@@ -28,6 +29,13 @@ esac
 INSTALL_DIR="/usr/local/bin"
 CONFIG_DIR="$HOME/.config/vaultctl"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Check if we need sudo for /usr/local/bin
+if [[ -w "$INSTALL_DIR" ]]; then
+    SUDO=""
+else
+    SUDO="sudo"
+fi
 
 echo "=== Headless Vault CLI - $OS_NAME Setup ==="
 echo
@@ -53,9 +61,9 @@ echo
 
 # Install binaries
 echo "Installing vaultctl to $INSTALL_DIR..."
-sudo cp "$SCRIPT_DIR/vaultctl/vaultctl" "$INSTALL_DIR/vaultctl"
-sudo cp "$SCRIPT_DIR/vaultctl/vaultctl-wrapper" "$INSTALL_DIR/vaultctl-wrapper"
-sudo chmod +x "$INSTALL_DIR/vaultctl" "$INSTALL_DIR/vaultctl-wrapper"
+$SUDO cp "$SCRIPT_DIR/vaultctl/vaultctl" "$INSTALL_DIR/vaultctl"
+$SUDO cp "$SCRIPT_DIR/vaultctl/vaultctl-wrapper" "$INSTALL_DIR/vaultctl-wrapper"
+$SUDO chmod +x "$INSTALL_DIR/vaultctl" "$INSTALL_DIR/vaultctl-wrapper"
 
 # Create config
 echo "Creating config at $CONFIG_DIR/config..."
@@ -68,7 +76,7 @@ export VAULTCTL_LOG="/tmp/vaultctl.log"
 EOF
 
 # Create wrapper that sources config
-sudo tee "$INSTALL_DIR/vaultctl-wrapper" > /dev/null << 'WRAPPER'
+$SUDO tee "$INSTALL_DIR/vaultctl-wrapper" > /dev/null << 'WRAPPER'
 #!/bin/bash
 set -euo pipefail
 
@@ -107,7 +115,7 @@ log "ALLOWED: $SSH_ORIGINAL_COMMAND"
 args="${SSH_ORIGINAL_COMMAND#vaultctl}"
 exec "$VAULTCTL_PATH" $args
 WRAPPER
-sudo chmod +x "$INSTALL_DIR/vaultctl-wrapper"
+$SUDO chmod +x "$INSTALL_DIR/vaultctl-wrapper"
 
 echo
 echo "=== Step 1 Complete: vaultctl installed ==="
