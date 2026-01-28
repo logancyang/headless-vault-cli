@@ -1,0 +1,30 @@
+# systemd service for vaultctl reverse SSH tunnel
+#
+# Installation:
+#   ./setup/tunnel-setup-linux.sh <vps_user> <vps_host> [port]
+#
+# Manual installation:
+#   1. Copy to ~/.config/systemd/user/vaultctl-tunnel.service
+#   2. Replace REPLACE_WITH_* placeholders
+#   3. systemctl --user daemon-reload
+#   4. systemctl --user enable --now vaultctl-tunnel
+
+[Unit]
+Description=Vaultctl Reverse SSH Tunnel
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/ssh -N -T \
+    -o ServerAliveInterval=30 \
+    -o ServerAliveCountMax=3 \
+    -o ExitOnForwardFailure=yes \
+    -o StrictHostKeyChecking=accept-new \
+    -R REPLACE_WITH_PORT:localhost:22 \
+    REPLACE_WITH_VPS_USER@REPLACE_WITH_VPS_HOST
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=default.target

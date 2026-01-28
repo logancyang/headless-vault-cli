@@ -1,10 +1,10 @@
 #!/bin/bash
 #
-# install.sh - Install vault-controller on macOS
+# install.sh - Install headless-vault-cli on macOS or Linux
 #
-# This is the Mac-side setup for the vault-controller Clawdbot plugin.
-# Run this on your Mac after installing the plugin on your VPS via:
-#   clawdhub install vault-controller
+# This is the local machine setup for the headless-vault-cli Moltbot skill.
+# Run this on your Mac/Linux after installing the skill on your VPS via:
+#   clawdhub install headless-vault-cli
 #
 # Usage:
 #   ./install.sh [VAULT_ROOT]
@@ -17,13 +17,21 @@
 
 set -euo pipefail
 
+# Detect OS
+OS="$(uname -s)"
+case "$OS" in
+    Darwin) OS_NAME="macOS" ;;
+    Linux)  OS_NAME="Linux" ;;
+    *)      echo "Error: Unsupported OS: $OS"; exit 1 ;;
+esac
+
 INSTALL_DIR="/usr/local/bin"
 CONFIG_DIR="$HOME/.config/vaultctl"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-echo "=== Note Connector - Mac Setup ==="
+echo "=== Headless Vault CLI - $OS_NAME Setup ==="
 echo
-echo "This installs the Mac-side components for the vault-controller plugin."
+echo "This installs the local components for the headless-vault-cli skill."
 echo
 
 # Get vault root
@@ -105,7 +113,6 @@ echo
 echo "=== Step 1 Complete: vaultctl installed ==="
 echo
 echo "Test it locally:"
-echo "  export VAULT_ROOT=\"$VAULT_ROOT\""
 echo "  vaultctl tree"
 echo
 echo "=== Step 2: SSH Setup ==="
@@ -119,15 +126,27 @@ echo "  cat ~/.ssh/id_ed25519.pub"
 echo
 echo "=== Step 3: Start Tunnel ==="
 echo
-echo "Option A - Quick test (manual):"
-echo "  ssh -N -R 2222:localhost:22 user@your-vps.com"
-echo
-echo "Option B - Persistent (auto-reconnect):"
-echo "  ./setup/tunnel-setup.sh <vps_user> <vps_host>"
+
+if [[ "$OS" == "Darwin" ]]; then
+    # macOS instructions
+    echo "Option A - Quick test (manual):"
+    echo "  ssh -N -R 2222:localhost:22 user@your-vps.com"
+    echo
+    echo "Option B - Persistent (auto-reconnect via launchd):"
+    echo "  ./setup/tunnel-setup.sh <vps_user> <vps_host>"
+else
+    # Linux instructions
+    echo "Option A - Quick test (manual):"
+    echo "  ssh -N -R 2222:localhost:22 user@your-vps.com"
+    echo
+    echo "Option B - Persistent (auto-reconnect via systemd):"
+    echo "  ./setup/tunnel-setup-linux.sh <vps_user> <vps_host>"
+fi
+
 echo
 echo "=== Step 4: Test from VPS ==="
 echo
 echo "  ssh -p 2222 localhost vaultctl tree"
 echo
-echo "If that works, your Clawdbot can now access your notes!"
+echo "If that works, your Moltbot can now access your notes!"
 echo

@@ -141,16 +141,31 @@ def cmd_resolve(args):
     if err:
         output_error(err)
 
+    # Decode path/title if base64 flag is set
+    if args.base64:
+        if args.path:
+            try:
+                path = base64.b64decode(args.path).decode('utf-8')
+            except Exception as e:
+                output_error(f"Invalid base64 path: {e}")
+        if args.title:
+            try:
+                title = base64.b64decode(args.title).decode('utf-8')
+            except Exception as e:
+                output_error(f"Invalid base64 title: {e}")
+    else:
+        path = args.path
+        title = args.title
+
     if args.path:
         # Path mode: direct resolution
-        resolved, err = resolve_and_validate(args.path, vault_root, must_exist=True)
+        resolved, err = resolve_and_validate(path, vault_root, must_exist=True)
         if err:
             output_error(err)
         output_success({"resolved_path": str(resolved)})
 
     elif args.title:
         # Title mode: search by filename
-        title = args.title
 
         # Try exact match first (with .md extension)
         if not title.endswith('.md'):
@@ -180,7 +195,16 @@ def cmd_info(args):
     if err:
         output_error(err)
 
-    resolved, err = resolve_and_validate(args.path, vault_root)
+    # Decode path if base64 flag is set
+    if args.base64:
+        try:
+            path = base64.b64decode(args.path).decode('utf-8')
+        except Exception as e:
+            output_error(f"Invalid base64 path: {e}")
+    else:
+        path = args.path
+
+    resolved, err = resolve_and_validate(path, vault_root)
     if err:
         output_error(err)
 
@@ -213,7 +237,16 @@ def cmd_read(args):
     if err:
         output_error(err)
 
-    resolved, err = resolve_and_validate(args.path, vault_root)
+    # Decode path if base64 flag is set
+    if args.base64:
+        try:
+            path = base64.b64decode(args.path).decode('utf-8')
+        except Exception as e:
+            output_error(f"Invalid base64 path: {e}")
+    else:
+        path = args.path
+
+    resolved, err = resolve_and_validate(path, vault_root)
     if err:
         output_error(err)
 
@@ -393,18 +426,21 @@ def main():
     # resolve
     p_resolve = subparsers.add_parser('resolve', help='Resolve note by path or title')
     resolve_group = p_resolve.add_mutually_exclusive_group(required=True)
-    resolve_group.add_argument('--path', help='Resolve by path (relative to vault)')
-    resolve_group.add_argument('--title', help='Resolve by title (filename match)')
+    resolve_group.add_argument('--path', help='Resolve by path (relative to vault, or base64 if --base64)')
+    resolve_group.add_argument('--title', help='Resolve by title (filename match, or base64 if --base64)')
+    p_resolve.add_argument('--base64', '-b', action='store_true', help='Path/title is base64 encoded')
     p_resolve.set_defaults(func=cmd_resolve)
 
     # info
     p_info = subparsers.add_parser('info', help='Get file metadata')
-    p_info.add_argument('path', help='Path to the note')
+    p_info.add_argument('path', help='Path to the note (or base64 if --base64)')
+    p_info.add_argument('--base64', '-b', action='store_true', help='Path is base64 encoded')
     p_info.set_defaults(func=cmd_info)
 
     # read
     p_read = subparsers.add_parser('read', help='Read entire note content')
-    p_read.add_argument('path', help='Path to the note')
+    p_read.add_argument('path', help='Path to the note (or base64 if --base64)')
+    p_read.add_argument('--base64', '-b', action='store_true', help='Path is base64 encoded')
     p_read.set_defaults(func=cmd_read)
 
     # create

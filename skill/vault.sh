@@ -1,8 +1,8 @@
 #!/bin/bash
 #
-# vault.sh - Clawdbot skill wrapper for vaultctl
+# vault.sh - Moltbot skill wrapper for vaultctl
 #
-# This script is called by Clawdbot to execute vault operations
+# This script is called by Moltbot to execute vault operations
 # on the remote Mac via SSH tunnel.
 #
 # Usage:
@@ -18,8 +18,8 @@ set -euo pipefail
 
 # Auto-detect Mac username from config file if not set via env
 VAULT_SSH_USER="${VAULT_SSH_USER:-}"
-if [[ -z "$VAULT_SSH_USER" && -f "$HOME/.config/vault-controller/mac-user" ]]; then
-    VAULT_SSH_USER="$(cat "$HOME/.config/vault-controller/mac-user")"
+if [[ -z "$VAULT_SSH_USER" && -f "$HOME/.config/headless-vault-cli/mac-user" ]]; then
+    VAULT_SSH_USER="$(cat "$HOME/.config/headless-vault-cli/mac-user")"
 fi
 
 VAULT_SSH_PORT="${VAULT_SSH_PORT:-2222}"
@@ -63,8 +63,18 @@ case "$cmd" in
     resolve)
         while [[ $# -gt 0 ]]; do
             case "$1" in
-                path=*) run_vaultctl resolve --path "${1#path=}"; exit ;;
-                title=*) run_vaultctl resolve --title "${1#title=}"; exit ;;
+                path=*)
+                    val="${1#path=}"
+                    encoded=$(printf '%s' "$val" | base64)
+                    run_vaultctl resolve --path "$encoded" --base64
+                    exit
+                    ;;
+                title=*)
+                    val="${1#title=}"
+                    encoded=$(printf '%s' "$val" | base64)
+                    run_vaultctl resolve --title "$encoded" --base64
+                    exit
+                    ;;
             esac
             shift
         done
@@ -84,7 +94,9 @@ case "$cmd" in
             echo '{"error": "missing_param", "message": "path= is required"}' >&2
             exit 1
         fi
-        run_vaultctl info "$path"
+        # Base64 encode path to handle spaces
+        encoded_path=$(printf '%s' "$path" | base64)
+        run_vaultctl info "$encoded_path" --base64
         ;;
 
     read)
@@ -99,7 +111,9 @@ case "$cmd" in
             echo '{"error": "missing_param", "message": "path= is required"}' >&2
             exit 1
         fi
-        run_vaultctl read "$path"
+        # Base64 encode path to handle spaces
+        encoded_path=$(printf '%s' "$path" | base64)
+        run_vaultctl read "$encoded_path" --base64
         ;;
 
     create)

@@ -1,17 +1,17 @@
-# Clawd Note Connector
+# Molt Note Connector
 
-Remote Markdown vault read/edit skill for Clawdbot via `vaultctl`.
+Remote Markdown vault read/edit skill for Moltbot via `vaultctl`.
 
 ## Project Overview
 
-This project implements a Clawdbot skill that allows a VPS-hosted bot to securely read and edit Markdown files on a local macOS machine. Uses reverse SSH tunnel with forced-command restriction for security.
+This project implements a Moltbot skill that allows a VPS-hosted bot to securely read and edit Markdown files on a local machine (macOS or Linux). Uses reverse SSH tunnel with forced-command restriction for security.
 
 ## Architecture
 
 ```
 ┌─────────────────┐     reverse tunnel     ┌─────────────────┐
-│  VPS (Clawdbot) │◄──────────────────────►│  Mac (Local)    │
-│                 │   localhost:<PORT>      │                 │
+│  VPS (Moltbot)  │◄──────────────────────►│  Local Machine  │
+│                 │   localhost:<PORT>      │  (Mac/Linux)    │
 │  skill calls:   │                        │  vaultctl       │
 │  ssh vaultctl   │────────────────────────►│  (forced cmd)   │
 │  <cmd> <args>   │                        │                 │
@@ -55,7 +55,12 @@ vaultctl set-root <path>                       # Change vault root directory
 vaultctl/
 ├── vaultctl           # Main CLI (Python)
 └── vaultctl-wrapper   # SSH forced-command wrapper (Bash)
-install.sh             # Installation script
+setup/
+├── tunnel-setup.sh          # macOS tunnel setup (launchd)
+├── tunnel-setup-linux.sh    # Linux tunnel setup (systemd)
+├── com.vaultctl.tunnel.plist    # macOS launchd service template
+└── vaultctl-tunnel.service      # Linux systemd service template
+install.sh             # Installation script (macOS + Linux)
 ```
 
 ## Tech Stack

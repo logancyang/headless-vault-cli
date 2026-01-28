@@ -1,13 +1,15 @@
 ---
-name: vault-controller
-description: Read and edit Markdown notes on a remote Mac via SSH tunnel.
-homepage: https://github.com/logancyang/vault-controller
-metadata: {"clawdbot":{"emoji":"🗄️"}}
+name: headless-vault-cli
+description: Read and edit Markdown notes on your personal computer via SSH tunnel. Use when the user asks to read, create, or append to notes in their vault.
+homepage: https://github.com/logancyang/headless-vault-cli
+metadata: {"moltbot":{"emoji":"🗄️"}}
 ---
 
-# Vault Controller
+# Headless Vault CLI
 
-Access Markdown notes on a local Mac from this remote Clawdbot via SSH tunnel.
+Access Markdown notes on your personal computer from this VPS-hosted Moltbot via SSH tunnel.
+
+**Terminology**: "Local machine" = your personal computer (macOS or Linux) where your notes live. This skill runs on the VPS and connects to your machine via a reverse SSH tunnel.
 
 ## Available Commands
 
@@ -50,17 +52,35 @@ ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl resolve --title "Meeting Not
 ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl resolve --path "Projects/Plan.md"
 ```
 
+**For paths/titles with spaces**, use `--base64`:
+```bash
+# echo -n "My Meeting Notes" | base64 → TXkgTWVldGluZyBOb3Rlcw==
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl resolve --title TXkgTWVldGluZyBOb3Rlcw== --base64
+```
+
 ### info - Get file metadata
 ```bash
 ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl info "Projects/Plan.md"
 ```
 Returns JSON: `{"path": "...", "lines": N, "bytes": N, "sha256": "...", "mtime": N}`
 
+**For paths with spaces**, use `--base64`:
+```bash
+# echo -n "Notes/My File.md" | base64 → Tm90ZXMvTXkgRmlsZS5tZA==
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl info Tm90ZXMvTXkgRmlsZS5tZA== --base64
+```
+
 ### read - Read note content
 ```bash
 ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl read "Projects/Plan.md"
 ```
 Returns JSON: `{"path": "...", "content": "..."}`
+
+**For paths with spaces**, use `--base64`:
+```bash
+# echo -n "Notes/My File.md" | base64 → Tm90ZXMvTXkgRmlsZS5tZA==
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl read Tm90ZXMvTXkgRmlsZS5tZA== --base64
+```
 
 ### create - Create a NEW note
 **IMPORTANT**: Use `--base64` flag with BOTH path AND content base64 encoded. This is required for paths/content with spaces or special characters.
@@ -79,6 +99,7 @@ ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl create Tm90ZXMvTW9ybmluZyBCc
 - Creates parent directories automatically
 - Fails if file already exists (use `append` to add to existing files)
 - File must have `.md` extension
+- **NEVER duplicate the title as a heading inside the note content** (e.g., for "My Note.md", don't start content with "# My Note")
 
 ### append - Append to EXISTING note
 ```bash
@@ -105,7 +126,7 @@ These operations are NOT supported:
 ## Environment Variables
 
 Auto-configured by tunnel-setup.sh:
-- `VAULT_SSH_USER` - Mac username (auto-detected)
+- `VAULT_SSH_USER` - Local machine username (auto-detected)
 - `VAULT_SSH_PORT` - Tunnel port (default: 2222)
 - `VAULT_SSH_HOST` - Tunnel host (default: localhost)
 
@@ -114,5 +135,109 @@ Auto-configured by tunnel-setup.sh:
 - Always run `vaultctl tree` first to see what notes exist
 - Use `vaultctl resolve --title "..."` to find a note by name
 - All output is JSON
-- The Mac must be online with tunnel running
-- **For create/append**: ALWAYS base64 encode BOTH path AND content with `--base64` flag
+- The local machine must be online with tunnel running
+- **For paths with spaces**: Use `--base64` flag with base64-encoded path (works for `read`, `info`, `create`, `append`)
+
+## Examples
+
+**Important**: Always run `tree` first if you're unsure what notes exist. This prevents errors from wrong paths or duplicate names.
+
+### Example 1: User asks to read a note (check first)
+User: "Show me my project plan"
+
+Step 1 - Check what exists:
+```bash
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl tree
+```
+Output:
+```json
+{"tree": [{"path": "Projects", "type": "dir"}, {"path": "Projects/Plan.md", "type": "file"}]}
+```
+
+Step 2 - Now read the correct path:
+```bash
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl read "Projects/Plan.md"
+```
+Output:
+```json
+{"path": "Projects/Plan.md", "content": "# Project Plan\n\n## Goals\n..."}
+```
+
+### Example 2: User asks to create a note (check first to avoid duplicates)
+User: "Create a meeting notes file"
+
+Step 1 - Check what already exists:
+```bash
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl tree
+```
+Output:
+```json
+{"tree": [{"path": "Projects", "type": "dir"}, {"path": "Projects/Plan.md", "type": "file"}]}
+```
+
+Step 2 - No "Meeting Notes" exists, safe to create (do NOT duplicate title as heading):
+```bash
+# echo -n "Meeting Notes.md" | base64 → TWVldGluZyBOb3Rlcy5tZA==
+# echo -n "## Agenda\n\n- Item 1\n- Item 2\n" | base64 → IyMgQWdlbmRhCgotIEl0ZW0gMQotIEl0ZW0gMgo=
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl create TWVldGluZyBOb3Rlcy5tZA== IyMgQWdlbmRhCgotIEl0ZW0gMQotIEl0ZW0gMgo= --base64
+```
+Output:
+```json
+{"status": "ok", "path": "Meeting Notes.md", "sha256": "abc123..."}
+```
+
+### Example 3: User asks about vault contents
+User: "What's in my notes?"
+
+```bash
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl tree --depth 2
+```
+Output:
+```json
+{"tree": [{"path": "Projects", "type": "dir"}, {"path": "Projects/Plan.md", "type": "file"}, {"path": "Ideas.md", "type": "file"}]}
+```
+
+Then summarize for user: "You have a Projects folder with Plan.md, and an Ideas.md file at the root."
+
+### Example 4: Complex workflow with source and output notes
+User: "According to the source note 'AI Digest Sources.md', browse the sources and output the digest to 'digest/2025-01-28-digest.md'"
+
+Step 1 - Check what exists:
+```bash
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl tree
+```
+Output:
+```json
+{"tree": [{"path": "AI Digest Sources.md", "type": "file"}, {"path": "digest", "type": "dir"}, {"path": "digest/2025-01-27-digest.md", "type": "file"}]}
+```
+
+Step 2 - Validate:
+- Source "AI Digest Sources.md" exists ✓
+- Output "digest/2025-01-28-digest.md" does NOT exist → will use `create`
+
+(If source didn't exist: STOP and ask user "I couldn't find 'AI Digest Sources.md'. Did you mean one of these: [list alternatives]?")
+
+(If output already existed: use `append` instead of `create`)
+
+Step 3 - Read the source note:
+```bash
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl read "AI Digest Sources.md"
+```
+Output:
+```json
+{"path": "AI Digest Sources.md", "content": "# AI Digest Sources\n\n- https://example.com/article1\n- https://example.com/article2\n"}
+```
+
+Step 4 - Browse sources and generate digest content (done by bot outside this skill)
+
+Step 5 - Write output to vault (do NOT duplicate title as heading):
+```bash
+# echo -n "digest/2025-01-28-digest.md" | base64 → ZGlnZXN0LzIwMjUtMDEtMjgtZGlnZXN0Lm1k
+# echo -n "## Summary\n\nKey points from today's sources...\n" | base64 → IyMgU3VtbWFyeQoKS2V5IHBvaW50cyBmcm9tIHRvZGF5J3Mgc291cmNlcy4uLgo=
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl create ZGlnZXN0LzIwMjUtMDEtMjgtZGlnZXN0Lm1k IyMgU3VtbWFyeQoKS2V5IHBvaW50cyBmcm9tIHRvZGF5J3Mgc291cmNlcy4uLgo= --base64
+```
+
+(If output already existed, use `append` instead:)
+```bash
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl append ZGlnZXN0LzIwMjUtMDEtMjgtZGlnZXN0Lm1k IyMgVXBkYXRlCi4uLg== --base64
+```

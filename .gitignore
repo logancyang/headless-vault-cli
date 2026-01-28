@@ -32,3 +32,6 @@ build/
 *~
 .idea/
 .vscode/
+
+# Dev Docs
+/dev-docs/

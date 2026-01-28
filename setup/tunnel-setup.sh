@@ -46,10 +46,10 @@ fi
 echo "SSH connection OK"
 echo
 
-# Configure Mac username on VPS for vault-controller skill
+# Configure Mac username on VPS for headless-vault-cli skill
 MAC_USER="$(whoami)"
 echo "Configuring Mac username ($MAC_USER) on VPS..."
-ssh "$VPS_USER@$VPS_HOST" "mkdir -p ~/.config/vault-controller && echo '$MAC_USER' > ~/.config/vault-controller/mac-user"
+ssh "$VPS_USER@$VPS_HOST" "mkdir -p ~/.config/headless-vault-cli && echo '$MAC_USER' > ~/.config/headless-vault-cli/mac-user"
 echo "Mac username configured"
 echo
 

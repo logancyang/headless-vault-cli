@@ -1,18 +1,18 @@
-# vault-controller
+# headless-vault-cli
 
-Let your remote AI assistant (like Clawdbot) read and write to your local Markdown vault — securely.
+Let your remote AI assistant (like Moltbot) read and write to your local Markdown vault — securely.
 
 ## What is this?
 
-If you run an AI bot on a server (like Clawdbot), it can't normally access notes on your laptop. This tool creates a secure bridge so your bot can read and write Markdown notes in a specific folder on your Mac.
+If you run an AI bot on a server (like Moltbot), it can't normally access notes on your laptop. This tool creates a secure bridge so your bot can read and write Markdown notes in a specific folder on your local machine (macOS or Linux).
 
-**How it works:** Your Mac connects to your server and keeps a secure channel open. The bot can only run a specific set of commands (`vaultctl`) — it cannot access other files or run arbitrary programs.
+**How it works:** Your local machine connects to your server and keeps a secure channel open. The bot can only run a specific set of commands (`vaultctl`) — it cannot access other files or run arbitrary programs.
 
 ## Note to Obsidian Users
-When running clawdbot on a remote server, tools like the bundled obsidian-cli doesn't fully work because many of its operations require the Obsidian GUI app installed on that remote machine. This vault-controller is the way around. It allows the remote clawdbot operate on your local folder, no Obsidian app or vault required, simply a folder and markdown files!
+When running moltbot on a remote server, tools like the bundled obsidian-cli doesn't fully work because many of its operations require the Obsidian GUI app installed on that remote machine. This headless-vault-cli is the way around. It allows the remote moltbot operate on your local folder. Best best part - no Obsidian app or vault required! It works simply on a folder and markdown files!
 
 ## Note to Other Note Takers
-A "vault" in this project is simply a folder of markdown files. It doesn't require it to be an Obsidian vault, or be managed by any specific note-taking app. Feel free to use vault-controller on any folder of notes you have.
+A "vault" in this project is simply a folder of markdown files. It doesn't require it to be an Obsidian vault, or be managed by any specific note-taking app. Feel free to use headless-vault-cli on any folder of notes you have.
 
 ## Features
 
@@ -22,16 +22,16 @@ A "vault" in this project is simply a folder of markdown files. It doesn't requi
 
 ## Quick Start
 
-Setup requires two parts: **VPS** (where Clawdbot runs) and **Mac** (where your notes live).
+Setup requires two parts: **VPS** (where Moltbot runs) and **Local Machine** (Mac or Linux, where your notes live).
 
 ---
 
 ### On VPS
 
-#### 1. Install the plugin
+#### 1. Install the skill
 
 ```bash
-clawdhub install vault-controller
+clawdhub install headless-vault-cli
 ```
 
 #### 2. Get your SSH public key
@@ -42,7 +42,7 @@ cat ~/.ssh/id_ed25519.pub
 
 If you get "No such file", generate a key first:
 ```bash
-ssh-keygen -t ed25519 -C "clawdbot"
+ssh-keygen -t ed25519 -C "moltbot"
 # Press Enter 3 times to accept defaults (no passphrase)
 cat ~/.ssh/id_ed25519.pub
 ```
@@ -52,23 +52,36 @@ You'll see something like:
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... user@vps
 ```
 
-Copy this key — you'll need it for the Mac setup.
+Copy this key — you'll need it for the local machine setup.
 
 ---
 
-### On Mac
+### On Local Machine (Mac or Linux)
 
-#### 3. Enable Remote Login
+#### 3. Enable SSH Server
 
+**macOS:**
 1. Open **System Settings** → **General** → **Sharing**
 2. Turn on **Remote Login**
 3. Under "Allow access for", select your user or "All users"
 
+**Linux (Debian/Ubuntu):**
+```bash
+sudo apt install openssh-server
+sudo systemctl enable --now ssh
+```
+
+**Linux (Fedora/RHEL):**
+```bash
+sudo dnf install openssh-server
+sudo systemctl enable --now sshd
+```
+
 #### 4. Install vaultctl
 
 ```bash
-git clone https://github.com/anthropics/vault-controller.git
-cd vault-controller
+git clone https://github.com/anthropics/headless-vault-cli.git
+cd headless-vault-cli
 ./install.sh ~/Notes
 ```
 
@@ -119,17 +132,28 @@ ssh -N -R 2222:localhost:22 \
 
 The keepalive options detect and kill dead connections within 90 seconds, preventing zombie tunnels.
 
-**Option B: Persistent (auto-reconnect via launchd)**
+**Option B: Persistent (auto-reconnect)**
+
+**macOS (launchd):**
 ```bash
 ./setup/tunnel-setup.sh <vps_user> <vps_host> [port]
 # Example:
 ./setup/tunnel-setup.sh deploy my-vps.example.com 2222
 ```
 
-This installs a launchd service that:
-- Starts on login
-- Auto-reconnects if connection drops
-- Logs to `/tmp/vaultctl-tunnel.log`
+This installs a launchd service that starts on login, auto-reconnects if connection drops, and logs to `/tmp/vaultctl-tunnel.log`.
+
+**Linux (systemd):**
+```bash
+./setup/tunnel-setup-linux.sh <vps_user> <vps_host> [port]
+# Example:
+./setup/tunnel-setup-linux.sh deploy my-vps.example.com 2222
+```
+
+This installs a systemd user service. To keep it running after logout:
+```bash
+sudo loginctl enable-linger $USER
+```
 
 ---
 
@@ -138,17 +162,17 @@ This installs a launchd service that:
 #### 8. Test the connection
 
 ```bash
-ssh -p 2222 <mac-username>@localhost vaultctl tree
+ssh -p 2222 <local-username>@localhost vaultctl tree
 ```
 
-Replace `<mac-username>` with your Mac username. To find it, run `whoami` on your Mac.
+Replace `<local-username>` with your local machine username. To find it, run `whoami` on your Mac/Linux.
 
 Example:
 ```bash
 ssh -p 2222 logan@localhost vaultctl tree
 ```
 
-If that works, your Clawdbot can now access your notes!
+If that works, your Moltbot can now access your notes!
 
 ## Commands
 
@@ -181,8 +205,8 @@ $ vaultctl read Projects/Plan.md
 
 ```
 ┌─────────────────┐     reverse tunnel     ┌─────────────────┐
-│  VPS (Bot)      │◄──────────────────────►│  Mac (Local)    │
-│                 │   localhost:2222        │                 │
+│  VPS (Bot)      │◄──────────────────────►│  Local Machine  │
+│                 │   localhost:2222        │  (Mac/Linux)    │
 │  ssh vaultctl   │────────────────────────►│  vaultctl       │
 │  <cmd> <args>   │                        │  (forced cmd)   │
 └─────────────────┘                        └─────────────────┘
@@ -229,9 +253,10 @@ Config file location: `~/.config/vaultctl/config`
 
 ## Requirements
 
-- macOS (tested on Ventura+)
+- macOS (tested on Ventura+) or Linux (Ubuntu 22.04+)
 - Python 3.9+
 - SSH server enabled
+- For persistent tunnel: launchd (macOS) or systemd (Linux)
 
 ## License
 
