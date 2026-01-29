@@ -380,14 +380,6 @@ def cmd_append(args):
         content = args.content
 
     try:
-        # Create backup
-        timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
-        backup_path = resolved.with_suffix(f'.md.bak.{timestamp}')
-
-        # Read current content for backup
-        original_content = resolved.read_bytes()
-        backup_path.write_bytes(original_content)
-
         # Append new content
         with open(resolved, 'a', encoding='utf-8') as f:
             f.write(content)
@@ -399,8 +391,7 @@ def cmd_append(args):
         output_success({
             "status": "ok",
             "path": str(resolved),
-            "sha256": sha256,
-            "backup": str(backup_path)
+            "sha256": sha256
         })
     except IOError as e:
         output_error(f"Failed to append to file: {e}", EXIT_SYSTEM_ERROR)

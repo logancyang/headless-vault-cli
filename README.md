@@ -1,32 +1,29 @@
 # headless-vault-cli
 
-Let your remote AI assistant (like Moltbot) read and write to your local Markdown vault — securely.
+Let your remote Moltbot read and write to your local Markdown vault — securely.
 
-## What is this?
+## 🤔 What is this?
 
-If you run an AI bot on a server (like Moltbot), it can't normally access notes on your laptop. This tool creates a secure bridge so your bot can read and write Markdown notes in a specific folder on your local machine (macOS or Linux).
+If you run Moltbot on a server, it can't access notes on your laptop out-of-the-box. This tool creates a secure bridge so your bot can read and write Markdown notes in a specific folder on your local machine (macOS or Linux).
 
-**How it works:** Your local machine connects to your server and keeps a secure channel open. The bot can only run a specific set of commands (`vaultctl`) — it cannot access other files or run arbitrary programs.
+**How it works:** Your local machine connects to your bot server and keeps a secure channel open. The bot can only run a specific set of commands (`vaultctl`) — it cannot access other files or run arbitrary programs.
 
-## Note to Obsidian Users
-When running moltbot on a remote server, tools like the bundled obsidian-cli doesn't fully work because many of its operations require the Obsidian GUI app installed on that remote machine. This headless-vault-cli is the way around. It allows the remote moltbot operate on your local folder. Best best part - no Obsidian app or vault required! It works simply on a folder and markdown files!
+### 📝 To Obsidian and Other Notetaking App Users
+When running Moltbot on a remote server, the Moltbot-bundled obsidian-cli doesn't fully work because many operations require the Obsidian GUI app to be installed in its environment. This headless-vault-cli is the workaround — it lets the remote bot operate on your local folder. Best part: no Obsidian app or vault required! It works with any folder of markdown files.
 
-## Note to Other Note Takers
-A "vault" in this project is simply a folder of markdown files. It doesn't require it to be an Obsidian vault, or be managed by any specific note-taking app. Feel free to use headless-vault-cli on any folder of notes you have.
+## ✨ Features
 
-## Features
+- **Safe Remote Access**: The remote bot can only access your notes folder, nothing else.
+- **No App Needed**: Works with any markdown folder, no Obsidian or other note-taking app needed.
+- **Non-destructive**: Only create and append operations — no delete or overwrite — so you can sleep tight even if you set your bot loose.
 
-- **Safe by design**: Bot can only access your notes folder, nothing else
-- **Automatic backups**: Creates a backup before any edit
-- **Simple and safe commands**: `tree`, `read`, `create`, `append`, no destructive operations like delete or overwrite to avoid data loss
-
-## Quick Start
+## 🚀 Quick Start
 
 Setup requires two parts: **VPS** (where Moltbot runs) and **Local Machine** (Mac or Linux, where your notes live).
 
 ---
 
-### On VPS
+### ☁️ On VPS
 
 #### 1. Install the skill
 
@@ -56,7 +53,7 @@ Copy this key — you'll need it for the local machine setup.
 
 ---
 
-### On Local Machine (Mac or Linux)
+### 💻 On Local Machine (Mac or Linux)
 
 #### 3. Enable SSH Server
 
@@ -163,7 +160,7 @@ sudo loginctl enable-linger $USER
 
 ---
 
-### On VPS
+### ☁️ On VPS
 
 #### 8. Test the connection
 
@@ -180,7 +177,7 @@ ssh -p 2222 logan@localhost vaultctl tree
 
 If that works, your Moltbot can now access your notes!
 
-## Commands
+## 📋 Commands
 
 | Command | Description | Example |
 |---------|-------------|---------|
@@ -194,7 +191,7 @@ If that works, your Moltbot can now access your notes!
 
 All commands output JSON to stdout. Errors go to stderr with exit code 1 (user error) or 2 (system error).
 
-## Example Output
+## 📄 Example Output
 
 ```bash
 $ vaultctl tree
@@ -207,7 +204,7 @@ $ vaultctl read Projects/Plan.md
 {"path": "/Users/me/Notes/Projects/Plan.md", "content": "# Project Plan\n\n..."}
 ```
 
-## Architecture
+## 🏗️ Architecture
 
 ```
 ┌─────────────────┐     reverse tunnel     ┌─────────────────┐
@@ -222,30 +219,30 @@ $ vaultctl read Projects/Plan.md
                                             └── *.md files
 ```
 
-## Security
+## 🔒 Security
 
 - **Forced-command**: SSH key can only run `vaultctl`, not arbitrary commands
 - **Path sandboxing**: All paths validated inside `VAULT_ROOT`
 - **No shell access**: Bot cannot run `rm`, `curl`, etc.
-- **Backups**: Writes create timestamped backups automatically
+- **Non-destructive**: No delete or overwrite commands
 
-## Configuration
+## ⚙️ Configuration
 
-### Changing your vault folder
+### 📁 Changing your vault folder
 
 The vault path is configured automatically during installation and stored in `~/.config/vaultctl/config`.
 
 **Option 1: Use the set-root command (recommended)**
 ```bash
-vaultctl set-root ~/NewNotesFolder
+vaultctl set-root <path-to-vault>
 ```
 
 **Option 2: Re-run the installer**
 ```bash
-./install.sh ~/NewNotesFolder
+./install.sh <path-to-vault>
 ```
 
-### Environment variables
+### 🌐 Environment variables
 
 These are automatically configured during setup. You don't need to set them manually.
 
@@ -257,11 +254,11 @@ These are automatically configured during setup. You don't need to set them manu
 
 Config file location: `~/.config/vaultctl/config`
 
-## Updating
+## 🔄 Updating
 
 When a new version is released, update both parts:
 
-### On VPS
+### ☁️ On VPS
 
 ```bash
 clawdhub update headless-vault-cli
@@ -269,7 +266,7 @@ clawdhub update headless-vault-cli
 
 Then start a new Moltbot session (skills are snapshotted at session start).
 
-### On Local Machine (Mac or Linux)
+### 💻 On Local Machine (Mac or Linux)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/logancyang/headless-vault-cli/master/setup.sh | bash -s -- <path-to-vault>
@@ -277,13 +274,13 @@ curl -fsSL https://raw.githubusercontent.com/logancyang/headless-vault-cli/maste
 
 Replace `<path-to-vault>` with your notes folder. Same command for install and update.
 
-## Requirements
+## 📦 Requirements
 
 - macOS (tested on Ventura+) or Linux (Ubuntu 22.04+)
 - Python 3.9+
 - SSH server enabled
 - For persistent tunnel: launchd (macOS) or systemd (Linux)
 
-## License
+## 📜 License
 
 MIT License - see [LICENSE](LICENSE)

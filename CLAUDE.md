@@ -26,7 +26,7 @@ This project implements a Moltbot skill that allows a VPS-hosted bot to securely
 
 1. **Mac → VPS**: Persistent reverse tunnel exposes Mac SSH as `localhost:<MAC_TUNNEL_PORT>`
 2. **VPS → Mac**: All operations run as: `ssh -p <MAC_TUNNEL_PORT> localhost vaultctl <subcommand> <args>`
-3. **vaultctl** enforces: sandboxing, sha256 concurrency checks, backups, patch-based edits
+3. **vaultctl** enforces: sandboxing, sha256 concurrency checks, patch-based edits
 
 ## Security Model
 
@@ -42,7 +42,7 @@ vaultctl resolve (--path P | --title T)        # Resolve note path
 vaultctl info <path>                           # Get file metadata
 vaultctl read <path>                           # Read entire note
 vaultctl create <path> <content>               # Create new note
-vaultctl append <path> <content>               # Append to note (with backup)
+vaultctl append <path> <content>               # Append to note
 vaultctl set-root <path>                       # Change vault root directory
 ```
 

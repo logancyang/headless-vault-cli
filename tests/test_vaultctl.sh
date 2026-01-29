@@ -188,15 +188,10 @@ echo "--- Testing: append ---"
 
 output=$("$VAULTCTL" append "Notes/NewNote.md" $'\n\n## Appended\n\nNew content.')
 assert_json_value "$output" "status" "ok" "append returns status ok"
-assert_json_has "$output" "backup" "append returns backup path"
 
 # Verify content was appended
 content=$(cat "$TEST_VAULT/Notes/NewNote.md")
 assert_contains "$content" "Appended" "append actually appends content"
-
-# Verify backup was created
-backup_count=$(ls "$TEST_VAULT/Notes/"*.bak.* 2>/dev/null | wc -l)
-[[ "$backup_count" -gt 0 ]] && pass "append creates backup" || fail "append creates backup" ">0 backups" "0 backups"
 
 # =============================================================================
 # Test: sandbox security

@@ -22,7 +22,7 @@ You have access to these commands ONLY. Do not attempt commands not listed here 
 | `info` | Get file metadata (lines, bytes, sha256, mtime) |
 | `read` | Read note content |
 | `create` | Create a NEW note (fails if file exists) |
-| `append` | Append content to EXISTING note (creates backup) |
+| `append` | Append content to EXISTING note |
 | `set-root` | Set vault root directory |
 
 ## How to Run Commands
@@ -106,7 +106,6 @@ ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl create Tm90ZXMvTW9ybmluZyBCc
 ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl append <base64_path> <base64_content> --base64
 ```
 
-- Creates a timestamped backup before modifying
 - Fails if file does not exist (use `create` for new files)
 
 ### set-root - Set vault root directory
