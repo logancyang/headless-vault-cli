@@ -166,7 +166,6 @@ echo "--- Testing: create ---"
 
 output=$("$VAULTCTL" create "Notes/NewNote.md" $'# New Note\n\nCreated by test.')
 assert_json_value "$output" "status" "ok" "create returns status ok"
-assert_json_has "$output" "sha256" "create returns sha256"
 
 # Verify file exists
 [[ -f "$TEST_VAULT/Notes/NewNote.md" ]] && pass "create actually creates file" || fail "create actually creates file" "file exists" "file missing"

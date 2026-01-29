@@ -22,7 +22,6 @@ import hashlib
 import json
 import os
 import sys
-from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -162,7 +161,7 @@ def cmd_resolve(args):
         resolved, err = resolve_and_validate(path, vault_root, must_exist=True)
         if err:
             output_error(err)
-        output_success({"resolved_path": str(resolved)})
+        output_success({"resolved_path": str(resolved.relative_to(vault_root))})
 
     elif args.title:
         # Title mode: search by filename
@@ -182,7 +181,7 @@ def cmd_resolve(args):
         if len(matches) == 0:
             output_error("Not found", candidates=[])
         elif len(matches) == 1:
-            output_success({"resolved_path": str(matches[0])})
+            output_success({"resolved_path": str(matches[0].relative_to(vault_root))})
         else:
             # Multiple matches - return shortest path or list
             candidates = [str(m.relative_to(vault_root)) for m in matches]
@@ -221,7 +220,7 @@ def cmd_info(args):
         sha256 = hashlib.sha256(content).hexdigest()
 
         output_success({
-            "path": str(resolved),
+            "path": str(resolved.relative_to(vault_root)),
             "lines": lines,
             "bytes": stat_info.st_size,
             "sha256": sha256,
@@ -253,7 +252,7 @@ def cmd_read(args):
     try:
         content = resolved.read_text(encoding='utf-8')
         output_success({
-            "path": str(resolved),
+            "path": str(resolved.relative_to(vault_root)),
             "content": content
         })
     except IOError as e:
@@ -308,13 +307,9 @@ def cmd_create(args):
         # Write content
         resolved.write_text(content, encoding='utf-8')
 
-        # Compute hash
-        sha256 = hashlib.sha256(content.encode('utf-8')).hexdigest()
-
         output_success({
             "status": "ok",
-            "path": str(resolved),
-            "sha256": sha256
+            "path": str(resolved.relative_to(vault_root))
         })
     except IOError as e:
         output_error(f"Failed to create file: {e}", EXIT_SYSTEM_ERROR)
@@ -384,14 +379,9 @@ def cmd_append(args):
         with open(resolved, 'a', encoding='utf-8') as f:
             f.write(content)
 
-        # Compute new hash
-        new_content = resolved.read_bytes()
-        sha256 = hashlib.sha256(new_content).hexdigest()
-
         output_success({
             "status": "ok",
-            "path": str(resolved),
-            "sha256": sha256
+            "path": str(resolved.relative_to(vault_root))
         })
     except IOError as e:
         output_error(f"Failed to append to file: {e}", EXIT_SYSTEM_ERROR)

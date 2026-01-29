@@ -182,7 +182,7 @@ ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl create TWVldGluZyBOb3Rlcy5tZ
 ```
 Output:
 ```json
-{"status": "ok", "path": "Meeting Notes.md", "sha256": "abc123..."}
+{"status": "ok", "path": "Meeting Notes.md"}
 ```
 
 ### Example 3: User asks about vault contents

@@ -198,10 +198,10 @@ $ vaultctl tree
 {"tree": [{"path": "Notes", "type": "dir"}, {"path": "Notes/Ideas.md", "type": "file"}, {"path": "Projects", "type": "dir"}, {"path": "Projects/Plan.md", "type": "file"}]}
 
 $ vaultctl info Projects/Plan.md
-{"path": "/Users/me/Notes/Projects/Plan.md", "lines": 42, "bytes": 1337, "sha256": "abc123...", "mtime": 1706000000}
+{"path": "Projects/Plan.md", "lines": 42, "bytes": 1337, "sha256": "abc123...", "mtime": 1706000000}
 
 $ vaultctl read Projects/Plan.md
-{"path": "/Users/me/Notes/Projects/Plan.md", "content": "# Project Plan\n\n..."}
+{"path": "Projects/Plan.md", "content": "# Project Plan\n\n..."}
 ```
 
 ## 🏗️ Architecture
