@@ -2,30 +2,55 @@
 name: headless-vault-cli
 description: Read and edit Markdown notes on your personal computer via SSH tunnel. Use when the user asks to read, create, or append to notes in their vault.
 homepage: https://github.com/logancyang/headless-vault-cli
-metadata: {"moltbot":{"emoji":"🗄️"}}
-env:
-  VAULT_SSH_USER:
-    description: Local machine (Mac/Linux) username for SSH tunnel connection
-    required: true
-  VAULT_SSH_PORT:
-    description: SSH tunnel port on localhost
-    required: false
-    default: "2222"
-  VAULT_SSH_HOST:
-    description: SSH tunnel host
-    required: false
-    default: "localhost"
-config:
-  - path: ~/.config/headless-vault-cli/mac-user
-    description: Fallback for VAULT_SSH_USER if env var is not set. Created by tunnel-setup.sh during installation.
-    access: read
+metadata:
+  category: productivity
+  interface: CLI
+  capabilities:
+    - ssh
+  dependencies: []
+openclaw:
+  emoji: "🗄️"
+  install:
+    env:
+      - VAULT_SSH_USER
+  requires:
+    env:
+      - VAULT_SSH_USER
+    optional_env:
+      - VAULT_SSH_PORT
+      - VAULT_SSH_HOST
 ---
 
 # Headless Vault CLI
 
-Access Markdown notes on your personal computer from this VPS-hosted Moltbot via SSH tunnel.
+Access Markdown notes on your personal computer from this VPS-hosted bot via SSH tunnel.
 
 **Terminology**: "Local machine" = your personal computer (macOS or Linux) where your notes live. This skill runs on the VPS and connects to your machine via a reverse SSH tunnel.
+
+## Prerequisites
+
+This is an instruction-only skill. Before using it, the user must complete a one-time setup on their local machine:
+
+1. **Install vaultctl** on the local machine (see [setup instructions](https://github.com/logancyang/headless-vault-cli))
+2. **Configure SSH forced-command** on the local machine's `~/.ssh/authorized_keys` to restrict the VPS key to only run `vaultctl` (see Security Model below)
+3. **Start a reverse SSH tunnel** from the local machine to the VPS, exposing `localhost:2222`
+4. **Set the environment variable** `VAULT_SSH_USER` to the local machine's username
+
+## Security Model
+
+This skill connects to the local machine over a pre-configured reverse SSH tunnel. Access is restricted by design:
+
+- **Forced-command restriction**: The VPS SSH key is added to the local machine's `~/.ssh/authorized_keys` with a forced-command wrapper, so the VPS can ONLY execute `vaultctl` — no interactive shell, no arbitrary commands (`rm`, `curl`, etc.)
+- **Vault sandboxing**: `vaultctl` validates all file paths are inside `VAULT_ROOT` and rejects path traversal attempts (`..`, symlinks outside vault)
+- **Non-destructive**: Only `create` (new files) and `append` (existing files) are supported — no delete, rename, move, or overwrite
+- **No credentials stored**: SSH authentication uses the VPS's existing SSH keypair; no additional secrets are stored by this skill
+
+Example `authorized_keys` entry on the local machine:
+```
+command="/usr/local/bin/vaultctl-wrapper",no-port-forwarding,no-X11-forwarding,no-agent-forwarding ssh-ed25519 AAAA... vps-key
+```
+
+This ensures the VPS can only run `vaultctl` commands, even if the tunnel is compromised.
 
 ## Available Commands
 
@@ -40,7 +65,6 @@ You have access to these commands ONLY. Do not attempt commands not listed here 
 | `create` | Create a NEW note (fails if file exists) |
 | `append` | Append content to EXISTING note |
 | `set-root` | Set vault root directory |
-| `check` | Verify SSH tunnel is up |
 
 ## How to Run Commands
 
@@ -50,6 +74,16 @@ ssh -4 -p ${VAULT_SSH_PORT:-2222} ${VAULT_SSH_USER}@${VAULT_SSH_HOST:-localhost}
 ```
 
 Always use `-4` to force IPv4 (avoids IPv6 timeout issues).
+
+## Environment Variables
+
+These must be set in the skill's runtime environment on the VPS:
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `VAULT_SSH_USER` | Yes | — | Local machine username for SSH tunnel |
+| `VAULT_SSH_PORT` | No | `2222` | SSH tunnel port on localhost |
+| `VAULT_SSH_HOST` | No | `localhost` | SSH tunnel host |
 
 ## Command Reference
 
@@ -139,13 +173,6 @@ These operations are NOT supported:
 - **Edit** specific parts of a file (only append to end)
 - **Create** folders without a file (folders are created automatically with `create`)
 
-## Environment Variables
-
-Auto-configured by tunnel-setup.sh:
-- `VAULT_SSH_USER` - Local machine username (auto-detected)
-- `VAULT_SSH_PORT` - Tunnel port (default: 2222)
-- `VAULT_SSH_HOST` - Tunnel host (default: localhost)
-
 ## Tips
 
 - Always run `vaultctl tree` first to see what notes exist
@@ -228,8 +255,8 @@ Output:
 ```
 
 Step 2 - Validate:
-- Source "AI Digest Sources.md" exists ✓
-- Output "digest/2025-01-28-digest.md" does NOT exist → will use `create`
+- Source "AI Digest Sources.md" exists
+- Output "digest/2025-01-28-digest.md" does NOT exist, will use `create`
 
 (If source didn't exist: STOP and ask user "I couldn't find 'AI Digest Sources.md'. Did you mean one of these: [list alternatives]?")
 
