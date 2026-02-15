@@ -28,7 +28,7 @@ Setup requires two parts: **VPS** (where Moltbot runs) and **Local Machine** (Ma
 #### 1. Install the skill
 
 ```bash
-clawdhub install headless-vault-cli
+clawhub install headless-vault-cli
 ```
 
 #### 2. Get your SSH public key
@@ -261,7 +261,7 @@ When a new version is released, update both parts:
 ### ☁️ On VPS
 
 ```bash
-clawdhub update headless-vault-cli
+clawhub update headless-vault-cli
 ```
 
 Then start a new Moltbot session (skills are snapshotted at session start).

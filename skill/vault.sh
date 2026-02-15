@@ -8,10 +8,16 @@
 # Usage:
 #   ./vault.sh <command> [args...]
 #
-# Environment:
-#   VAULT_SSH_USER  - Mac username (required)
+# Environment (required):
+#   VAULT_SSH_USER  - Mac username
+#
+# Environment (optional):
 #   VAULT_SSH_PORT  - SSH port for tunnel (default: 2222)
 #   VAULT_SSH_HOST  - SSH host (default: localhost)
+#
+# Config fallback:
+#   If VAULT_SSH_USER is not set, reads from
+#   ~/.config/headless-vault-cli/mac-user (created by tunnel-setup.sh)
 #
 
 set -euo pipefail
@@ -24,7 +30,7 @@ fi
 
 VAULT_SSH_PORT="${VAULT_SSH_PORT:-2222}"
 VAULT_SSH_HOST="${VAULT_SSH_HOST:-localhost}"
-SSH_OPTS="-o ConnectTimeout=10 -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+SSH_OPTS="-4 -o ConnectTimeout=10 -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
 
 if [[ -z "$VAULT_SSH_USER" ]]; then
     echo '{"error": "config_missing", "message": "Mac username not configured. Run tunnel-setup.sh or set VAULT_SSH_USER"}' >&2
@@ -130,8 +136,10 @@ case "$cmd" in
             echo '{"error": "missing_param", "message": "path= and content= are required"}' >&2
             exit 1
         fi
-        # Pipe content via stdin to avoid shell quoting issues over SSH
-        printf '%s' "$content" | ssh $SSH_OPTS -p "$VAULT_SSH_PORT" "${VAULT_SSH_USER}@${VAULT_SSH_HOST}" vaultctl create "$path" -
+        # Base64 encode both path and content to handle spaces and special characters
+        encoded_path=$(printf '%s' "$path" | base64)
+        encoded_content=$(printf '%s' "$content" | base64)
+        run_vaultctl create "$encoded_path" "$encoded_content" --base64
         ;;
 
     append)
@@ -148,8 +156,26 @@ case "$cmd" in
             echo '{"error": "missing_param", "message": "path= and content= are required"}' >&2
             exit 1
         fi
-        # Pipe content via stdin to avoid shell quoting issues over SSH
-        printf '%s' "$content" | ssh $SSH_OPTS -p "$VAULT_SSH_PORT" "${VAULT_SSH_USER}@${VAULT_SSH_HOST}" vaultctl append "$path" -
+        # Base64 encode both path and content to handle spaces and special characters
+        encoded_path=$(printf '%s' "$path" | base64)
+        encoded_content=$(printf '%s' "$content" | base64)
+        run_vaultctl append "$encoded_path" "$encoded_content" --base64
+        ;;
+
+    set-root)
+        path=""
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                path=*) path="${1#path=}" ;;
+                *) path="$1" ;;
+            esac
+            shift
+        done
+        if [[ -z "$path" ]]; then
+            echo '{"error": "missing_param", "message": "path is required"}' >&2
+            exit 1
+        fi
+        run_vaultctl set-root "$path"
         ;;
 
     check)
@@ -158,7 +184,7 @@ case "$cmd" in
         ;;
 
     *)
-        echo '{"error": "unknown_command", "message": "Unknown command: '"$cmd"'", "available": ["tree", "resolve", "info", "read", "create", "append", "check"]}' >&2
+        echo '{"error": "unknown_command", "message": "Unknown command: '"$cmd"'", "available": ["tree", "resolve", "info", "read", "create", "append", "set-root", "check"]}' >&2
         exit 1
         ;;
 esac

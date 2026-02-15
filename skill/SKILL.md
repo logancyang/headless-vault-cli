@@ -3,6 +3,22 @@ name: headless-vault-cli
 description: Read and edit Markdown notes on your personal computer via SSH tunnel. Use when the user asks to read, create, or append to notes in their vault.
 homepage: https://github.com/logancyang/headless-vault-cli
 metadata: {"moltbot":{"emoji":"🗄️"}}
+env:
+  VAULT_SSH_USER:
+    description: Local machine (Mac/Linux) username for SSH tunnel connection
+    required: true
+  VAULT_SSH_PORT:
+    description: SSH tunnel port on localhost
+    required: false
+    default: "2222"
+  VAULT_SSH_HOST:
+    description: SSH tunnel host
+    required: false
+    default: "localhost"
+config:
+  - path: ~/.config/headless-vault-cli/mac-user
+    description: Fallback for VAULT_SSH_USER if env var is not set. Created by tunnel-setup.sh during installation.
+    access: read
 ---
 
 # Headless Vault CLI
@@ -24,6 +40,7 @@ You have access to these commands ONLY. Do not attempt commands not listed here 
 | `create` | Create a NEW note (fails if file exists) |
 | `append` | Append content to EXISTING note |
 | `set-root` | Set vault root directory |
+| `check` | Verify SSH tunnel is up |
 
 ## How to Run Commands
 
