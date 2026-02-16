@@ -116,6 +116,11 @@ if [[ "${cmd_parts[0]}" != "vaultctl" ]]; then
     reject "only vaultctl commands allowed"
 fi
 
+# Block admin commands that should only run locally
+if [[ "${cmd_parts[1]:-}" == "set-root" ]]; then
+    reject "set-root is not allowed remotely"
+fi
+
 log "ALLOWED: $SSH_ORIGINAL_COMMAND"
 
 # Pass remaining args individually (no eval, no unquoted expansion)

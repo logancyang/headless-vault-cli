@@ -163,21 +163,8 @@ case "$cmd" in
         ;;
 
     set-root)
-        path=""
-        while [[ $# -gt 0 ]]; do
-            case "$1" in
-                path=*) path="${1#path=}" ;;
-                *) path="$1" ;;
-            esac
-            shift
-        done
-        if [[ -z "$path" ]]; then
-            echo '{"error": "missing_param", "message": "path is required"}' >&2
-            exit 1
-        fi
-        # Base64 encode path to prevent shell injection
-        encoded_path=$(printf '%s' "$path" | base64)
-        run_vaultctl set-root "$encoded_path" --base64
+        echo '{"error": "not_allowed", "message": "set-root is a local-only admin command and cannot be run remotely"}' >&2
+        exit 1
         ;;
 
     check)
@@ -186,7 +173,7 @@ case "$cmd" in
         ;;
 
     *)
-        echo '{"error": "unknown_command", "message": "Unknown command: '"$cmd"'", "available": ["tree", "resolve", "info", "read", "create", "append", "set-root", "check"]}' >&2
+        echo '{"error": "unknown_command", "message": "Unknown command: '"$cmd"'", "available": ["tree", "resolve", "info", "read", "create", "append", "check"]}' >&2
         exit 1
         ;;
 esac

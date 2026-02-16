@@ -48,7 +48,6 @@ You have access to these commands ONLY. Do not attempt commands not listed here 
 | `read` | Read note content |
 | `create` | Create a NEW note (fails if file exists) |
 | `append` | Append content to EXISTING note |
-| `set-root` | Set vault root directory |
 
 ## How to Run Commands
 
@@ -135,11 +134,6 @@ ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl append <base64_path> <base64
 ```
 
 - Fails if file does not exist (use `create` for new files)
-
-### set-root - Set vault root directory
-```bash
-ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl set-root /path/to/vault
-```
 
 ## What You CANNOT Do
 

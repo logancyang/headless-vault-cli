@@ -173,6 +173,20 @@ else
 fi
 
 # =============================================================================
+# Test: Admin commands blocked remotely
+# =============================================================================
+
+echo "--- Testing: admin command restriction ---"
+
+export SSH_ORIGINAL_COMMAND='vaultctl set-root /'
+output=$("$WRAPPER" 2>&1 || true)
+if [[ "$output" == *"rejected"* ]] || [[ "$output" == *"not allowed"* ]]; then
+    pass "wrapper rejects remote set-root"
+else
+    fail "wrapper rejects remote set-root" "rejection message" "$output"
+fi
+
+# =============================================================================
 # Test: Logging
 # =============================================================================
 
