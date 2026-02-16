@@ -30,7 +30,7 @@ fi
 
 VAULT_SSH_PORT="${VAULT_SSH_PORT:-2222}"
 VAULT_SSH_HOST="${VAULT_SSH_HOST:-localhost}"
-SSH_OPTS="-4 -o ConnectTimeout=10 -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+SSH_OPTS="-4 -o ConnectTimeout=10 -o BatchMode=yes -o StrictHostKeyChecking=yes"
 
 if [[ -z "$VAULT_SSH_USER" ]]; then
     echo '{"error": "config_missing", "message": "Mac username not configured. Run tunnel-setup.sh or set VAULT_SSH_USER"}' >&2
@@ -175,7 +175,9 @@ case "$cmd" in
             echo '{"error": "missing_param", "message": "path is required"}' >&2
             exit 1
         fi
-        run_vaultctl set-root "$path"
+        # Base64 encode path to prevent shell injection
+        encoded_path=$(printf '%s' "$path" | base64)
+        run_vaultctl set-root "$encoded_path" --base64
         ;;
 
     check)

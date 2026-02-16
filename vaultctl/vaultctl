@@ -317,7 +317,16 @@ def cmd_create(args):
 
 def cmd_set_root(args):
     """Set the vault root directory."""
-    vault_path = Path(args.path).resolve()
+    # Decode path if base64 flag is set
+    if args.base64:
+        try:
+            path = base64.b64decode(args.path).decode('utf-8')
+        except Exception as e:
+            output_error(f"Invalid base64 path: {e}")
+    else:
+        path = args.path
+
+    vault_path = Path(path).resolve()
 
     if not vault_path.exists():
         output_error(f"Path does not exist: {vault_path}")
@@ -440,7 +449,8 @@ def main():
 
     # set-root
     p_set_root = subparsers.add_parser('set-root', help='Set the vault root directory')
-    p_set_root.add_argument('path', help='Path to the vault directory')
+    p_set_root.add_argument('path', help='Path to the vault directory (or base64 if --base64)')
+    p_set_root.add_argument('--base64', '-b', action='store_true', help='Path is base64 encoded')
     p_set_root.set_defaults(func=cmd_set_root)
 
     args = parser.parse_args()

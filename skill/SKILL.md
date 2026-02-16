@@ -2,7 +2,7 @@
 name: headless-vault-cli
 description: Read and edit Markdown notes on your personal computer via SSH tunnel. Use when the user asks to read, create, or append to notes in their vault.
 homepage: https://github.com/logancyang/headless-vault-cli
-metadata: {"openclaw":{"emoji":"🗄️","requires":{"bins":["ssh"],"env":["VAULT_SSH_USER"],"optional_env":["VAULT_SSH_PORT","VAULT_SSH_HOST"]}}}
+metadata: {"openclaw":{"emoji":"🗄️","requires":{"bins":["ssh"],"env":["VAULT_SSH_USER"],"optional_env":["VAULT_SSH_PORT","VAULT_SSH_HOST"],"config_paths":["~/.config/headless-vault-cli/mac-user"]}}}
 ---
 
 # Headless Vault CLI
