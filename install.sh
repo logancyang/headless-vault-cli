@@ -104,16 +104,22 @@ if [[ -z "${SSH_ORIGINAL_COMMAND:-}" ]]; then
     reject "no command provided"
 fi
 
-read -r cmd_name _ <<< "$SSH_ORIGINAL_COMMAND"
+# Reject shell metacharacters to prevent injection attacks
+if [[ "$SSH_ORIGINAL_COMMAND" =~ [\;\|\&\$\`\(\)\{\}\<\>\\] ]]; then
+    reject "illegal characters in command"
+fi
 
-if [[ "$cmd_name" != "vaultctl" ]]; then
+# Parse into array safely (splits on whitespace, no glob expansion)
+read -ra cmd_parts <<< "$SSH_ORIGINAL_COMMAND"
+
+if [[ "${cmd_parts[0]}" != "vaultctl" ]]; then
     reject "only vaultctl commands allowed"
 fi
 
 log "ALLOWED: $SSH_ORIGINAL_COMMAND"
 
-args="${SSH_ORIGINAL_COMMAND#vaultctl}"
-exec "$VAULTCTL_PATH" $args
+# Pass remaining args individually (no eval, no unquoted expansion)
+exec "$VAULTCTL_PATH" "${cmd_parts[@]:1}"
 WRAPPER
 $SUDO chmod +x "$INSTALL_DIR/vaultctl-wrapper"
 

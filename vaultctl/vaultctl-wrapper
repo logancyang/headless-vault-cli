@@ -16,15 +16,22 @@
 
 set -euo pipefail
 
+# Save caller-provided env vars before sourcing config (allows test overrides)
+_CALLER_VAULT_ROOT="${VAULT_ROOT:-}"
+_CALLER_VAULTCTL_PATH="${VAULTCTL_PATH:-}"
+_CALLER_VAULTCTL_LOG="${VAULTCTL_LOG:-}"
+
 # Source config file if it exists (sets VAULT_ROOT, VAULTCTL_PATH, etc.)
 CONFIG_FILE="$HOME/.config/vaultctl/config"
 if [[ -f "$CONFIG_FILE" ]]; then
     source "$CONFIG_FILE"
 fi
 
-# Configuration (with defaults if not set by config)
-VAULTCTL_PATH="${VAULTCTL_PATH:-/usr/local/bin/vaultctl}"
-LOG_FILE="${VAULTCTL_LOG:-/tmp/vaultctl.log}"
+# Caller-provided env vars take precedence over config file
+VAULT_ROOT="${_CALLER_VAULT_ROOT:-$VAULT_ROOT}"
+VAULTCTL_PATH="${_CALLER_VAULTCTL_PATH:-${VAULTCTL_PATH:-/usr/local/bin/vaultctl}}"
+LOG_FILE="${_CALLER_VAULTCTL_LOG:-${VAULTCTL_LOG:-/tmp/vaultctl.log}}"
+export VAULT_ROOT
 
 log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG_FILE"
@@ -42,16 +49,22 @@ if [[ -z "${SSH_ORIGINAL_COMMAND:-}" ]]; then
     reject "no command provided"
 fi
 
-# Extract the first word (command name)
-read -r cmd_name _ <<< "$SSH_ORIGINAL_COMMAND"
+# Reject shell metacharacters to prevent injection attacks.
+# Valid vaultctl args are subcommands, flags, paths, and base64 strings,
+# none of which require these characters.
+if [[ "$SSH_ORIGINAL_COMMAND" =~ [\;\|\&\$\`\(\)\{\}\<\>\\] ]]; then
+    reject "illegal characters in command"
+fi
 
-# Only allow vaultctl commands
-if [[ "$cmd_name" != "vaultctl" ]]; then
+# Parse into array safely (splits on whitespace, no glob expansion)
+read -ra cmd_parts <<< "$SSH_ORIGINAL_COMMAND"
+
+# First element must be "vaultctl"
+if [[ "${cmd_parts[0]}" != "vaultctl" ]]; then
     reject "only vaultctl commands allowed"
 fi
 
 log "ALLOWED: $SSH_ORIGINAL_COMMAND"
 
-# Execute the command with proper argument parsing
-# Using eval to preserve quotes in the original command
-eval "exec $VAULTCTL_PATH ${SSH_ORIGINAL_COMMAND#vaultctl}"
+# Pass remaining args individually (no eval, no unquoted expansion)
+exec "$VAULTCTL_PATH" "${cmd_parts[@]:1}"

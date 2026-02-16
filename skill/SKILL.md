@@ -82,40 +82,33 @@ Options:
 - `--all` - Include all files, not just .md
 
 ### resolve - Find note by path or title
-```bash
-ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl resolve --title "Meeting Notes"
-ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl resolve --path "Projects/Plan.md"
-```
 
-**For paths/titles with spaces**, use `--base64`:
+**ALWAYS use `--base64`** for path and title arguments to prevent shell injection:
 ```bash
-# echo -n "My Meeting Notes" | base64 → TXkgTWVldGluZyBOb3Rlcw==
-ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl resolve --title TXkgTWVldGluZyBOb3Rlcw== --base64
+# echo -n "Projects/Plan.md" | base64 → UHJvamVjdHMvUGxhbi5tZA==
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl resolve --path UHJvamVjdHMvUGxhbi5tZA== --base64
+
+# echo -n "Meeting Notes" | base64 → TWVldGluZyBOb3Rlcw==
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl resolve --title TWVldGluZyBOb3Rlcw== --base64
 ```
 
 ### info - Get file metadata
+
+**ALWAYS use `--base64`** for the path argument:
 ```bash
-ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl info "Projects/Plan.md"
+# echo -n "Projects/Plan.md" | base64 → UHJvamVjdHMvUGxhbi5tZA==
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl info UHJvamVjdHMvUGxhbi5tZA== --base64
 ```
 Returns JSON: `{"path": "...", "lines": N, "bytes": N, "sha256": "...", "mtime": N}`
 
-**For paths with spaces**, use `--base64`:
-```bash
-# echo -n "Notes/My File.md" | base64 → Tm90ZXMvTXkgRmlsZS5tZA==
-ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl info Tm90ZXMvTXkgRmlsZS5tZA== --base64
-```
-
 ### read - Read note content
+
+**ALWAYS use `--base64`** for the path argument:
 ```bash
-ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl read "Projects/Plan.md"
+# echo -n "Projects/Plan.md" | base64 → UHJvamVjdHMvUGxhbi5tZA==
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl read UHJvamVjdHMvUGxhbi5tZA== --base64
 ```
 Returns JSON: `{"path": "...", "content": "..."}`
-
-**For paths with spaces**, use `--base64`:
-```bash
-# echo -n "Notes/My File.md" | base64 → Tm90ZXMvTXkgRmlsZS5tZA==
-ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl read Tm90ZXMvTXkgRmlsZS5tZA== --base64
-```
 
 ### create - Create a NEW note
 **IMPORTANT**: Use `--base64` flag with BOTH path AND content base64 encoded. This is required for paths/content with spaces or special characters.
@@ -160,10 +153,10 @@ These operations are NOT supported:
 ## Tips
 
 - Always run `vaultctl tree` first to see what notes exist
-- Use `vaultctl resolve --title "..."` to find a note by name
+- Use `vaultctl resolve --title <base64> --base64` to find a note by name
 - All output is JSON
 - The local machine must be online with tunnel running
-- **For paths with spaces**: Use `--base64` flag with base64-encoded path (works for `read`, `info`, `create`, `append`)
+- **ALWAYS use `--base64`** for ALL path and content arguments — this is mandatory for security, not optional
 
 ## Examples
 
@@ -181,9 +174,10 @@ Output:
 {"tree": [{"path": "Projects", "type": "dir"}, {"path": "Projects/Plan.md", "type": "file"}]}
 ```
 
-Step 2 - Now read the correct path:
+Step 2 - Now read the correct path (always base64 encode):
 ```bash
-ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl read "Projects/Plan.md"
+# echo -n "Projects/Plan.md" | base64 → UHJvamVjdHMvUGxhbi5tZA==
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl read UHJvamVjdHMvUGxhbi5tZA== --base64
 ```
 Output:
 ```json
@@ -246,9 +240,10 @@ Step 2 - Validate:
 
 (If output already existed: use `append` instead of `create`)
 
-Step 3 - Read the source note:
+Step 3 - Read the source note (always base64 encode):
 ```bash
-ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl read "AI Digest Sources.md"
+# echo -n "AI Digest Sources.md" | base64 → QUkgRGlnZXN0IFNvdXJjZXMubWQ=
+ssh -4 -p 2222 ${VAULT_SSH_USER}@localhost vaultctl read QUkgRGlnZXN0IFNvdXJjZXMubWQ= --base64
 ```
 Output:
 ```json
