@@ -27,6 +27,8 @@ Setup requires two parts: **VPS** (where Moltbot runs) and **Local Machine** (Ma
 
 #### 1. Install the skill
 
+Available on [ClawhHub](https://clawhub.ai/logancyang/headless-vault-cli).
+
 ```bash
 clawhub install headless-vault-cli
 ```
